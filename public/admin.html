@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Kahani Admin Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #000; color: #fff; padding: 0; margin: 0; display: flex; }
+        .sidebar { width: 260px; background: #0a0a0a; height: 100vh; position: fixed; padding: 30px 20px; border-right: 1px solid #222; box-sizing: border-box; z-index: 100; }
+        .main-content { margin-left: 260px; padding: 40px; width: calc(100% - 260px); box-sizing: border-box; min-height: 100vh; }
+        h1 { color: #FFA000; font-size: 28px; margin-bottom: 40px; }
+        .nav-item { padding: 14px 20px; cursor: pointer; color: #888; border-radius: 8px; margin-bottom: 8px; font-weight: 500; transition: 0.3s; }
+        .nav-item:hover { background: #111; color: #fff; }
+        .nav-item.active { background: #FFA000; color: #000; }
+
+        .story-card { background: #111; border: 1px solid #333; padding: 25px; margin-bottom: 30px; border-radius: 12px; position: relative; }
+        .story-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; }
+        .badge { padding: 6px 14px; border-radius: 20px; font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
+        .badge-pending { background: #FFA000; color: #000; }
+        .badge-published { background: #4CAF50; color: #fff; }
+        .badge-rejected { background: #F44336; color: #fff; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .stat-box { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #222; }
+        .stat-box small { color: #666; display: block; margin-bottom: 2px; font-size: 0.7em; }
+        .stat-box b { font-size: 1em; }
+
+        .preview-area { background: #050505; border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid #222; }
+        .chapter-box { background: #111; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #333; border-left: 4px solid #FFA000; }
+
+        video, audio { width: 100%; max-width: 450px; margin-top: 10px; border-radius: 8px; }
+        textarea, input, select { width: 100%; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 8px; margin: 8px 0; font-family: inherit; box-sizing: border-box; }
+        textarea:focus, input:focus { border-color: #FFA000; outline: none; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: #FFA000; color: #000; }
+        .btn-secondary { background: #222; color: #fff; border: 1px solid #444; }
+        .btn-danger { background: #B71C1C; color: #fff; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.9; }
+
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        #auth-box { background: #0a0a0a; padding: 50px; border-radius: 16px; border: 1px solid #333; width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+
+        .hidden { display: none !important; }
+        .chapter-input-group { border: 1px solid #333; padding: 20px; border-radius: 12px; margin-top: 15px; background: #050505; position: relative; }
+        .remove-chapter { position: absolute; top: 10px; right: 10px; color: #F44336; cursor: pointer; font-size: 1.2em; }
+
+        #modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display:flex; align-items:center; justify-content:center; }
+        #modal-content { background:#0a0a0a; border:1px solid #333; border-radius:12px; padding:30px; width: 600px; max-height: 90vh; overflow-y: auto; }
+
+        .report-card { background: #1a0a0a; border: 1px solid #422; padding: 20px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #F44336; }
+        .file-label { display: block; color: #FFA000; font-size: 0.85em; margin-top: 10px; }
+        .thumb-preview { width: 80px; height: 110px; object-fit: cover; border-radius: 4px; border: 1px solid #333; margin-right: 15px; }
+    </style>
+</head>
+<body>
+    <div id="auth-overlay">
+        <div id="auth-box">
+            <h2 style="color:#FFA000; margin-top: 0;">Kahani Admin</h2>
+            <p style="color:#666; font-size: 0.9em; margin-bottom: 30px;">Authorized Access Only</p>
+            <input type="email" id="login-email" placeholder="Email">
+            <input type="password" id="login-password" placeholder="Password">
+            <button class="btn btn-primary" style="width:100%" id="login-btn">Secure Login</button>
+            <p id="auth-error" style="color:#F44336; font-size:0.85em; margin-top:15px; text-align: center;"></p>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="hidden">
+        <div id="modal-content">
+            <h2 id="modal-title" style="color:#FFA000; margin-top:0">Edit Content</h2>
+            <div id="modal-body"></div>
+            <div style="display:flex; justify-content: flex-end; gap:10px; margin-top:20px">
+                <button class="btn btn-secondary" onclick="hideModal()">Cancel</button>
+                <button class="btn btn-primary" id="modal-save-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h1>Kahani</h1>
+        <div class="nav-item active" id="nav-review" onclick="showView('review')">Review Queue</div>
+        <div class="nav-item" id="nav-upload" onclick="showView('upload')">Create New Series</div>
+        <div class="nav-item" id="nav-reports" onclick="showView('reports')">User Reports</div>
+        <div style="position: absolute; bottom: 30px; width: calc(100% - 40px);">
+            <button class="btn btn-secondary" style="width: 100%;" onclick="handleLogout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="view-review">
+            <h2 style="margin-top: 0;">Moderation & Analytics</h2>
+            <div id="content-area">Initializing cloud stream...</div>
+        </div>
+
+        <div id="view-upload" class="hidden">
+            <h2 style="margin-top: 0;">Create Official Series</h2>
+            <div class="story-card">
+                <h3 style="color:#FFA000; margin-top: 0;">Series Details</h3>
+                <input type="text" id="story-title" placeholder="Series Title">
+                <textarea id="story-synopsis" rows="3" placeholder="Synopsis"></textarea>
+                <div style="display:flex; gap:15px">
+                    <select id="story-genre">
+                        <option value="LOVE">Love</option>
+                        <option value="THRILLER">Thriller</option>
+                        <option value="ROMANCE">Romance</option>
+                        <option value="MYTHOLOGY">Mythology</option>
+                        <option value="CRIME">Crime</option>
+                        <option value="COMEDY">Comedy</option>
+                    </select>
+                    <select id="story-lang">
+                        <option value="te">Telugu</option>
+                        <option value="hi">Hindi</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <label class="file-label">Cover Image (Recommended 3:4 Portrait)</label>
+                <input type="file" id="story-cover-file" accept="image/*">
+                <input type="text" id="story-cover-url" placeholder="Or enter Cover URL">
+
+                <label class="file-label">Promo Video (Optional)</label>
+                <input type="file" id="story-video-file" accept="video/*">
+                <input type="text" id="story-video-url" placeholder="Or enter Video URL">
+
+                <h3 style="color:#FFA000; margin-top: 30px;">Chapters</h3>
+                <div id="chapters-container">
+                    <div class="chapter-input-group" data-index="1">
+                        <h4 style="margin-top:0">Chapter 1</h4>
+                        <input type="text" class="ch-title" placeholder="Chapter Title">
+                        <textarea class="ch-content" rows="4" placeholder="Story Text"></textarea>
+                        <label class="file-label">Chapter Audio</label>
+                        <input type="file" class="ch-audio-file" accept="audio/*">
+                        <input type="text" class="ch-audio-url" placeholder="Or enter Audio URL">
+                    </div>
+                </div>
+                <button class="btn btn-secondary" style="margin-top:10px" onclick="addChapterInput()">+ Add Another Chapter</button>
+
+                <button class="btn btn-primary" style="margin-top: 40px; width:100%;" id="upload-btn" onclick="uploadStory()">Publish Series to Live</button>
+            </div>
+        </div>
+
+        <div id="view-reports" class="hidden">
+            <h2 style="margin-top: 0;">User Flagged Content</h2>
+            <div id="reports-area">Fetching reports...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, query, orderBy, getDocs, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0A1SG866SYv-aHkVNHkqgjjE4qjiF3IM",
+            authDomain: "kahani-b0d53.firebaseapp.com",
+            projectId: "kahani-b0d53",
+            storageBucket: "kahani-b0d53.firebasestorage.app",
+            appId: "1:72252954148:android:9ed0bef3d30ba16e88aab1"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        const overlay = document.getElementById('auth-overlay');
+
+        // --- AUTH ---
+        document.getElementById('login-btn').onclick = async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            try { await signInWithEmailAndPassword(auth, email, pass); } catch (e) { document.getElementById('auth-error').innerText = e.message; }
+        };
+
+        onAuthStateChanged(auth, user => {
+            if (user) { overlay.classList.add('hidden'); initDashboard(); }
+            else { overlay.classList.remove('hidden'); }
+        });
+
+        window.handleLogout = () => signOut(auth).then(() => location.reload());
+
+        // --- NAVIGATION ---
+        window.showView = (id) => {
+            document.getElementById('view-review').classList.add('hidden');
+            document.getElementById('view-upload').classList.add('hidden');
+            document.getElementById('view-reports').classList.add('hidden');
+            document.getElementById('view-' + id).classList.remove('hidden');
+            document.getElementById('nav-review').className = 'nav-item' + (id==='review'?' active':'');
+            document.getElementById('nav-upload').className = 'nav-item' + (id==='upload'?' active':'');
+            document.getElementById('nav-reports').className = 'nav-item' + (id==='reports'?' active':'');
+        };
+
+        // --- CHAPTER MANAGEMENT ---
+        let chapterCount = 1;
+        window.addChapterInput = () => {
+            chapterCount++;
+            const div = document.createElement('div');
+            div.className = 'chapter-input-group';
+            div.dataset.index = chapterCount;
+            div.innerHTML = `
+                <span class="remove-chapter" onclick="this.parentElement.remove()">&times;</span>
+                <h4 style="margin-top:0">Chapter ${chapterCount}</h4>
+                <input type="text" class="ch-title" placeholder="Chapter Title">
+                <textarea class="ch-content" rows="4" placeholder="Story Text"></textarea>
+                <label class="file-label">Chapter Audio</label>
+                <input type="file" class="ch-audio-file" accept="audio/*">
+                <input type="text" class="ch-audio-url" placeholder="Or enter Audio URL">
+            `;
+            document.getElementById('chapters-container').appendChild(div);
+        };
+
+        // --- DASHBOARD ---
+        function initDashboard() {
+            const contentArea = document.getElementById('content-area');
+            const reportsArea = document.getElementById('reports-area');
+
+            onSnapshot(query(collection(db, "series"), orderBy("createdAt", "desc")), async (snapshot) => {
+                contentArea.innerHTML = '';
+                for (const docSnap of snapshot.docs) {
+                    const story = docSnap.data();
+                    const id = docSnap.id;
+
+                    const card = document.createElement('div');
+                    card.className = 'story-card';
+                    card.innerHTML = `
+                        <div class="story-header">
+                            <div style="display:flex">
+                                <img class="thumb-preview" src="${story.coverUrl || 'https://via.placeholder.com/80x110?text=No+Cover'}" onerror="this.src='https://via.placeholder.com/80x110?text=Error'">
+                                <div>
+                                    <h3 style="margin:0">${story.title}</h3>
+                                    <p style="color:#666; font-size:0.85em; margin: 5px 0;">ID: ${id} | Author: ${story.uploaderName || 'User'}</p>
+                                    <span class="badge badge-${(story.publishStatus || 'pending').toLowerCase()}">${story.publishStatus || 'PENDING'}</span>
+                                </div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px">
+                                <div class="stats-grid">
+                                    <div class="stat-box"><small>Plays</small>${story.playCount || 0}</div>
+                                    <div class="stat-box"><small>Reads</small>${story.readCount || 0}</div>
+                                    <div class="stat-box"><small>Watches</small>${story.watchCount || 0}</div>
+                                </div>
+                                <div style="display:flex; gap:10px">
+                                    <button class="btn btn-secondary" onclick="editStory('${id}')">Edit Series</button>
+                                    <button class="btn btn-danger" onclick="deleteStory('${id}')">Delete Series</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; margin-bottom:20px; background:#1a1a1a; padding:10px; border-radius:8px">
+                            <small style="color:#888">Featured Rank:</small>
+                            <select style="width:100px; margin:0" onchange="updateRank('${id}', this.value)">
+                                <option value="">None</option>
+                                <option value="1" ${story.onboardingRank == 1 ? 'selected' : ''}>#1</option>
+                                <option value="2" ${story.onboardingRank == 2 ? 'selected' : ''}>#2</option>
+                                <option value="3" ${story.onboardingRank == 3 ? 'selected' : ''}>#3</option>
+                                <option value="4" ${story.onboardingRank == 4 ? 'selected' : ''}>#4</option>
+                            </select>
+                            <div style="flex-grow:1; text-align:right">
+                                <button class="btn btn-primary" onclick="updateStatus('${id}', 'PUBLISHED')">Publish</button>
+                                <button class="btn btn-secondary" onclick="updateStatus('${id}', 'REJECTED')">Reject</button>
+                            </div>
+                        </div>
+                        <div id="chapters-${id}">Loading chapters...</div>
+                        <button class="btn btn-secondary" style="margin-top:10px; width:100%" onclick="addNewChapter('${id}')">+ Add New Chapter</button>
+                        <textarea id="reason-${id}" style="margin-top:15px" rows="1" placeholder="Rejection Feedback...">${story.rejectionReason || ''}</textarea>
+                    `;
+                    contentArea.appendChild(card);
+                    loadChapters(id);
+                }
+            });
+
+            onSnapshot(query(collection(db, "reports"), orderBy("createdAt", "desc")), (snapshot) => {
+                reportsArea.innerHTML = '';
+                snapshot.forEach(docSnap => {
+                    const report = docSnap.data();
+                    const card = document.createElement('div');
+                    card.className = 'report-card';
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content: space-between">
+                            <strong>Series ID: ${report.seriesId}</strong>
+                            <small>${new Date(report.createdAt.toDate()).toLocaleString()}</small>
+                        </div>
+                        <p style="margin: 10px 0">Reason: ${report.reason}</p>
+                        <button class="btn btn-secondary" onclick="showView('review')">View Story</button>
+                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em" onclick="dismissReport('${docSnap.id}')">Dismiss Report</button>
+                    `;
+                    reportsArea.appendChild(card);
+                });
+            });
+        }
+
+        async function loadChapters(seriesId) {
+            const container = document.getElementById(`chapters-${seriesId}`);
+            const snap = await getDocs(query(collection(db, "series", seriesId, "chapters"), orderBy("chapterNumber")));
+            let html = '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">';
+            snap.forEach(chDoc => {
+                const ch = chDoc.data();
+                html += `
+                    <div class="chapter-box" style="margin:0">
+                        <b>${ch.chapterNumber}. ${ch.title}</b>
+                        <div style="display:flex; gap:5px; margin-top:5px">
+                            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8em" onclick="editChapter('${seriesId}', '${chDoc.id}')">Edit</button>
+                            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8em" onclick="deleteChapter('${seriesId}', '${chDoc.id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html || '<p style="color:#444">No chapters</p>';
+        }
+
+        // --- ACTIONS ---
+        window.updateStatus = async (id, status) => {
+            const reason = document.getElementById(`reason-${id}`).value;
+            await updateDoc(doc(db, "series", id), { publishStatus: status, rejectionReason: reason });
+            alert("Updated!");
+        };
+
+        window.updateRank = async (id, val) => {
+            await updateDoc(doc(db, "series", id), { onboardingRank: val ? parseInt(val) : null });
+        };
+
+        window.deleteStory = async (id) => {
+            if(!confirm("DELETE ENTIRE SERIES? This cannot be undone.")) return;
+            await deleteDoc(doc(db, "series", id));
+            alert("Deleted");
+        };
+
+        window.dismissReport = async (id) => {
+            await deleteDoc(doc(db, "reports", id));
+        };
+
+        async function uploadFile(file, path) {
+            if (!file) return null;
+            const fileRef = ref(storage, path);
+            const snapshot = await uploadBytes(fileRef, file);
+            return await getDownloadURL(snapshot.ref);
+        }
+
+        window.uploadStory = async () => {
+            const btn = document.getElementById('upload-btn');
+            const title = document.getElementById('story-title').value;
+            const synopsis = document.getElementById('story-synopsis').value;
+            if(!title || !synopsis) { alert("Missing title/synopsis"); return; }
+
+            btn.disabled = true;
+            btn.innerText = "Uploading files...";
+
+            const docId = title.toLowerCase().trim().replace(/ /g, "_").replace(/[^a-z0-9_]/g, "");
+
+            try {
+                // Upload Cover and Video
+                const coverFile = document.getElementById('story-cover-file').files[0];
+                const videoFile = document.getElementById('story-video-file').files[0];
+
+                let coverUrl = document.getElementById('story-cover-url').value;
+                let videoUrl = document.getElementById('story-video-url').value;
+
+                if (coverFile) coverUrl = await uploadFile(coverFile, `stories/${docId}/cover.jpg`);
+                if (videoFile) videoUrl = await uploadFile(videoFile, `stories/${docId}/promo.mp4`);
+
+                const batch = writeBatch(db);
+                const seriesRef = doc(db, "series", docId);
+                const chapterInputs = document.querySelectorAll('.chapter-input-group');
+
+                batch.set(seriesRef, {
+                    title, synopsis,
+                    genre: document.getElementById('story-genre').value,
+                    language: document.getElementById('story-lang').value,
+                    coverUrl, videoUrl,
+                    publishStatus: 'PUBLISHED',
+                    status: 'ONGOING',
+                    createdAt: new Date(),
+                    uploaderId: 'admin',
+                    uploaderName: 'Official',
+                    totalChapters: chapterInputs.length,
+                    playCount: 0, readCount: 0, watchCount: 0
+                });
+
+                for (let i = 0; i < chapterInputs.length; i++) {
+                    const group = chapterInputs[i];
+                    const chNum = i + 1;
+                    const chRef = doc(db, "series", docId, "chapters", "ch" + chNum);
+                    const content = group.querySelector('.ch-content').value;
+                    const audioFile = group.querySelector('.ch-audio-file').files[0];
+                    let audioUrl = group.querySelector('.ch-audio-url').value;
+
+                    if (audioFile) audioUrl = await uploadFile(audioFile, `stories/${docId}/audio/ch${chNum}.mp3`);
+
+                    batch.set(chRef, {
+                        chapterNumber: chNum,
+                        title: group.querySelector('.ch-title').value,
+                        textContent: content,
+                        audioUrl: audioUrl || null,
+                        isFreePreview: (i < 3),
+                        wordCount: content.split(/\s+/).length
+                    });
+                }
+
+                await batch.commit();
+                alert("Series published live!");
+                location.reload();
+            } catch (e) {
+                alert("Error: " + e.message);
+                btn.disabled = false;
+                btn.innerText = "Publish Series to Live";
+            }
+        };
+
+        // --- MODAL / EDITING ---
+        const modal = document.getElementById('modal-overlay');
+        const modalBody = document.getElementById('modal-body');
+        window.hideModal = () => modal.classList.add('hidden');
+
+        window.editStory = async (id) => {
+            const storySnap = await getDocs(query(collection(db, "series")));
+            const story = storySnap.docs.find(d => d.id === id).data();
+
+            document.getElementById('modal-title').innerText = "Edit Series: " + story.title;
+            modalBody.innerHTML = `
+                <input type="text" id="edit-title" value="${story.title}" placeholder="Title">
+                <textarea id="edit-synopsis" rows="5" placeholder="Synopsis">${story.synopsis}</textarea>
+                <div style="display:flex; gap:10px">
+                    <select id="edit-genre" style="flex:1">
+                        <option value="LOVE" ${story.genre==='LOVE'?'selected':''}>Love</option>
+                        <option value="THRILLER" ${story.genre==='THRILLER'?'selected':''}>Thriller</option>
+                        <option value="ROMANCE" ${story.genre==='ROMANCE'?'selected':''}>Romance</option>
+                        <option value="MYTHOLOGY" ${story.genre==='MYTHOLOGY'?'selected':''}>Mythology</option>
+                        <option value="CRIME" ${story.genre==='CRIME'?'selected':''}>Crime</option>
+                        <option value="COMEDY" ${story.genre==='COMEDY'?'selected':''}>Comedy</option>
+                    </select>
+                    <select id="edit-lang" style="flex:1">
+                        <option value="te" ${story.language==='te'?'selected':''}>Telugu</option>
+                        <option value="hi" ${story.language==='hi'?'selected':''}>Hindi</option>
+                        <option value="en" ${story.language==='en'?'selected':''}>English</option>
+                    </select>
+                </div>
+                <label class="file-label">Update Cover (Recommended 3:4 Portrait)</label>
+                <input type="file" id="edit-cover-file" accept="image/*">
+                <input type="text" id="edit-cover-url" value="${story.coverUrl || ''}" placeholder="Cover URL">
+                <label class="file-label">Update Video</label>
+                <input type="file" id="edit-video-file" accept="video/*">
+                <input type="text" id="edit-video-url" value="${story.videoUrl || ''}" placeholder="Video URL">
+            `;
+            modal.classList.remove('hidden');
+            document.getElementById('modal-save-btn').onclick = async () => {
+                const btn = document.getElementById('modal-save-btn');
+                btn.disabled = true; btn.innerText = "Saving...";
+
+                let coverUrl = document.getElementById('edit-cover-url').value;
+                let videoUrl = document.getElementById('edit-video-url').value;
+
+                const cFile = document.getElementById('edit-cover-file').files[0];
+                const vFile = document.getElementById('edit-video-file').files[0];
+
+                if (cFile) coverUrl = await uploadFile(cFile, `stories/${id}/cover.jpg`);
+                if (vFile) videoUrl = await uploadFile(vFile, `stories/${id}/promo.mp4`);
+
+                await updateDoc(doc(db, "series", id), {
+                    title: document.getElementById('edit-title').value,
+                    synopsis: document.getElementById('edit-synopsis').value,
+                    genre: document.getElementById('edit-genre').value,
+                    language: document.getElementById('edit-lang').value,
+                    coverUrl, videoUrl
+                });
+                alert("Saved"); hideModal();
+            };
+        };
+
+        window.addNewChapter = async (seriesId) => {
+            const snap = await getDocs(collection(db, "series", seriesId, "chapters"));
+            const nextNum = snap.size + 1;
+            document.getElementById('modal-title').innerText = "Add Chapter " + nextNum;
+            modalBody.innerHTML = `
+                <input type="text" id="add-ch-title" placeholder="Chapter Title">
+                <textarea id="add-ch-content" rows="10" placeholder="Chapter story text..."></textarea>
+                <label class="file-label">Chapter Audio</label>
+                <input type="file" id="add-ch-audio-file" accept="audio/*">
+                <input type="text" id="add-ch-audio-url" placeholder="Or enter Audio URL">
+            `;
+            modal.classList.remove('hidden');
+            document.getElementById('modal-save-btn').onclick = async () => {
+                const btn = document.getElementById('modal-save-btn');
+                btn.disabled = true; btn.innerText = "Publishing...";
+
+                const chContent = document.getElementById('add-ch-content').value;
+                let audioUrl = document.getElementById('add-ch-audio-url').value;
+                const aFile = document.getElementById('add-ch-audio-file').files[0];
+                if (aFile) audioUrl = await uploadFile(aFile, `stories/${seriesId}/audio/ch${nextNum}.mp3`);
+
+                const chId = "ch" + nextNum;
+                await setDoc(doc(db, "series", seriesId, "chapters", chId), {
+                    chapterNumber: nextNum,
+                    title: document.getElementById('add-ch-title').value,
+                    textContent: chContent,
+                    audioUrl,
+                    isFreePreview: (nextNum <= 3),
+                    wordCount: chContent.split(/\s+/).length
+                });
+
+                // Update series total chapters
+                await updateDoc(doc(db, "series", seriesId), { totalChapters: nextNum });
+
+                alert("Chapter Published!"); hideModal();
+            };
+        };
+
+        window.editChapter = async (seriesId, chId) => {
+            const chSnap = (await getDocs(collection(db, "series", seriesId, "chapters"))).docs.find(d => d.id === chId);
+            const ch = chSnap.data();
+            document.getElementById('modal-title').innerText = "Edit Chapter " + ch.chapterNumber;
+            modalBody.innerHTML = `
+                <input type="text" id="edit-ch-title" value="${ch.title}">
+                <textarea id="edit-ch-content" rows="10">${ch.textContent}</textarea>
+                <label class="file-label">Update Audio</label>
+                <input type="file" id="edit-ch-audio-file" accept="audio/*">
+                <input type="text" id="edit-ch-audio-url" value="${ch.audioUrl || ''}" placeholder="Audio URL">
+            `;
+            modal.classList.remove('hidden');
+            document.getElementById('modal-save-btn').onclick = async () => {
+                const btn = document.getElementById('modal-save-btn');
+                btn.disabled = true; btn.innerText = "Saving...";
+
+                let audioUrl = document.getElementById('edit-ch-audio-url').value;
+                const aFile = document.getElementById('edit-ch-audio-file').files[0];
+                if (aFile) audioUrl = await uploadFile(aFile, `stories/${seriesId}/audio/ch${ch.chapterNumber}.mp3`);
+
+                await updateDoc(doc(db, "series", seriesId, "chapters", chId), {
+                    title: document.getElementById('edit-ch-title').value,
+                    textContent: document.getElementById('edit-ch-content').value,
+                    audioUrl,
+                    wordCount: document.getElementById('edit-ch-content').value.split(/\s+/).length
+                });
+                alert("Saved"); hideModal();
+            };
+        };
+
+        window.deleteChapter = async (seriesId, chId) => {
+            if(!confirm("Delete this chapter?")) return;
+            await deleteDoc(doc(db, "series", seriesId, "chapters", chId));
+            alert("Deleted");
+        };
+
+    </script>
+</body>
+</html>

@@ -1,50 +1,68 @@
 package com.vl.kahani.ui.nav
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 
 sealed interface Screen {
     data object Home : Screen
     data object Search : Screen
+    data object Upload : Screen
     data object Library : Screen
+    data object Profile : Screen
     data object Wallet : Screen
-    data object Settings : Screen
     data object Notifications : Screen
+    data object Following : Screen
     data class SeriesDetail(val seriesId: String) : Screen
     data class Reader(val seriesId: String, val chapterId: String) : Screen
 }
 
 /**
- * A five-tab app with shallow stacks doesn't need a navigation library. This keeps routes as real
- * Kotlin types with no string parsing and no serialization plugin.
+ * A navigator that maintains a separate backstack for each primary tab.
  */
-class Navigator(start: Screen = Screen.Home) {
-    private val stack = mutableStateListOf(start)
+class Navigator(private val startTab: Screen = Screen.Home) {
+    private val stacks = mutableStateMapOf<Screen, SnapshotStateList<Screen>>().apply {
+        put(Screen.Home, mutableStateListOf(Screen.Home))
+        put(Screen.Search, mutableStateListOf(Screen.Search))
+        put(Screen.Upload, mutableStateListOf(Screen.Upload))
+        put(Screen.Library, mutableStateListOf(Screen.Library))
+        put(Screen.Profile, mutableStateListOf(Screen.Profile))
+    }
+    
+    var activeTab by mutableStateOf(startTab)
+        private set
 
-    val current: Screen get() = stack.last()
+    val current: Screen get() = stacks[activeTab]?.last() ?: activeTab
 
-    val canGoBack: Boolean get() = stack.size > 1
+    val canGoBack: Boolean get() = (stacks[activeTab]?.size ?: 0) > 1 || activeTab != startTab
 
     fun go(screen: Screen) {
-        stack.add(screen)
+        stacks[activeTab]?.add(screen)
     }
 
     fun selectTab(tab: Screen) {
-        if (current == tab && stack.size == 1) return
-        stack.clear()
-        stack.add(tab)
+        if (activeTab == tab && stacks[tab]?.size == 1) return
+        activeTab = tab
+        // If the tab stack was cleared for some reason, restore the root
+        if (stacks[tab]?.isEmpty() == true) {
+            stacks[tab]?.add(tab)
+        }
     }
 
     fun back(): Boolean {
-        if (stack.size <= 1) return false
-        stack.removeAt(stack.lastIndex)
-        return true
+        val currentStack = stacks[activeTab] ?: return false
+        if (currentStack.size > 1) {
+            currentStack.removeAt(currentStack.lastIndex)
+            return true
+        }
+        if (activeTab != startTab) {
+            activeTab = startTab
+            return true
+        }
+        return false
     }
 
-    /** Which bottom tab should read as active for the screen currently on top. */
-    fun activeTab(): Screen = stack.firstOrNull() ?: Screen.Home
+    /** Which bottom tab is currently active. */
+    fun activeTab(): Screen = activeTab
 }
 
 @Composable

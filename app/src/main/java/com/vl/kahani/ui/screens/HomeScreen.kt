@@ -76,10 +76,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize()) {
         HomeTopBar()
 
-        when (loader.state) {
-            LoadState.LOADING -> HomeSkeleton()
+        when {
+            loader.state == LoadState.LOADING || store.isCatalogLoading -> HomeSkeleton()
 
-            LoadState.ERROR -> StateMessage(
+            loader.state == LoadState.ERROR -> StateMessage(
                 title = strings.errorTitle,
                 body = strings.errorBody,
                 actionLabel = strings.retry,
@@ -87,7 +87,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 showRetryIcon = true,
             )
 
-            LoadState.CONTENT -> PullToRefreshBox(
+            else -> PullToRefreshBox(
                 listState = listState,
                 isRefreshing = refreshing,
                 onRefresh = { refreshing = true },
@@ -109,6 +109,21 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             )
                         }
                     }
+                    
+                    // User Preferences at top
+                    interestGenres.forEach { genre ->
+                        val inGenre = catalog.filter { it.genre == genre }
+                        if (inGenre.isNotEmpty()) {
+                            item(key = genre.key) {
+                                Shelf(
+                                    label = strings.genre(genre),
+                                    series = inGenre,
+                                    onOpen = { nav.go(Screen.SeriesDetail(it.id)) },
+                                )
+                            }
+                        }
+                    }
+
                     if (picks.isNotEmpty()) {
                         item {
                             Shelf(
@@ -127,10 +142,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             )
                         }
                     }
-                    interestGenres.forEach { genre ->
+                    
+                    // Other Categories below
+                    Genre.entries.filter { it !in interestGenres }.forEach { genre ->
                         val inGenre = catalog.filter { it.genre == genre }
                         if (inGenre.isNotEmpty()) {
-                            item(key = genre.key) {
+                            item(key = "other_${genre.key}") {
                                 Shelf(
                                     label = strings.genre(genre),
                                     series = inGenre,
@@ -141,11 +158,24 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     }
                     if (catalog.isEmpty()) {
                         item {
-                            StateMessage(
-                                title = strings.noResultsTitle,
-                                body = strings.familySafeBody,
-                                actionLabel = strings.navSettings,
-                                onAction = { nav.selectTab(Screen.Settings) },
+                            Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                StateMessage(
+                                    title = "Your Story Begins Here",
+                                    body = "The world of Kahani is currently being curated. Our storytellers are preparing thousands of chapters just for you. Check back very soon!",
+                                )
+                            }
+                        }
+                    }
+                    
+                    item {
+                        Column(
+                            Modifier.fillMaxWidth().padding(top = KahaniSpacing.xxl),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Made with 💙 in India",
+                                style = KahaniType.MicroBold,
+                                color = KahaniColors.TextMuted.copy(alpha = 0.5f)
                             )
                         }
                     }

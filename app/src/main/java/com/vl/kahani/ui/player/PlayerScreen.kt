@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,10 @@ fun AudioPlayerScreen(modifier: Modifier = Modifier) {
     val series = playback.series
     val chapter = playback.chapter
     if (series == null || chapter == null) return
+
+    LaunchedEffect(series.id) {
+        store.incrementStat(series.id, "watch")
+    }
 
     var showSpeed by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }

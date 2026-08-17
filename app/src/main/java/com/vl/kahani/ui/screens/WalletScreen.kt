@@ -42,6 +42,7 @@ import com.vl.kahani.ui.components.KahaniCard
 import com.vl.kahani.ui.components.KahaniSearchField
 import com.vl.kahani.ui.components.MetaTag
 import com.vl.kahani.ui.components.PrimaryButton
+import com.vl.kahani.ui.components.ProgressTrack
 import com.vl.kahani.ui.components.ScreenTitleBar
 import com.vl.kahani.ui.components.SectionHeader
 import com.vl.kahani.ui.components.StateMessage
@@ -69,6 +70,10 @@ fun WalletScreen(modifier: Modifier = Modifier) {
             ),
         ) {
             item { BalanceCard(store.coinBalance) }
+
+            item { ListenEarnCard() }
+
+            item { DailyBonusCard() }
 
             item { ReferralCard() }
 
@@ -145,6 +150,57 @@ fun WalletScreen(modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ListenEarnCard() {
+    val store = LocalStore.current
+    val progress = (store.todayListenSeconds / 900f).coerceIn(0f, 1f)
+    val minsLeft = (15 - (store.todayListenSeconds / 60)).coerceAtLeast(0)
+    
+    KahaniCard(Modifier.fillMaxWidth().padding(top = KahaniSpacing.sm)) {
+        Column(verticalArrangement = Arrangement.spacedBy(KahaniSpacing.xs)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Listen & Earn", style = KahaniType.ChapterTitle, color = KahaniColors.TextPrimary)
+                    Text(
+                        if (progress >= 1f) "Daily limit reached! +10 coins added." else "Listen for $minsLeft more mins to earn 10 coins.",
+                        style = KahaniType.Micro,
+                        color = KahaniColors.TextMuted
+                    )
+                }
+                Text("${(progress * 100).toInt()}%", style = KahaniType.UiBold, color = KahaniColors.Saffron)
+            }
+            ProgressTrack(fraction = progress)
+        }
+    }
+}
+
+@Composable
+private fun DailyBonusCard() {
+    val store = LocalStore.current
+    val canClaim = store.canClaimDailyBonus()
+    
+    KahaniCard(
+        Modifier.fillMaxWidth().padding(top = KahaniSpacing.sm),
+        elevatedSurface = canClaim
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Daily Reward", style = KahaniType.ChapterTitle, color = KahaniColors.TextPrimary)
+                Text(
+                    if (canClaim) "Claim your 10 free coins!" else "Come back tomorrow for more.",
+                    style = KahaniType.Micro,
+                    color = KahaniColors.TextMuted
+                )
+            }
+            PrimaryButton(
+                text = if (canClaim) "Claim" else "Claimed",
+                enabled = canClaim,
+                onClick = { store.claimDailyBonus() }
+            )
         }
     }
 }
@@ -227,6 +283,7 @@ private fun ReferralCard() {
                                 KahaniStore.ReferralResult.CREDITED -> strings.referralCredited
                                 KahaniStore.ReferralResult.ALREADY_CLAIMED -> strings.referralAlreadyClaimed
                                 KahaniStore.ReferralResult.INVALID -> strings.referralInvalid
+                                else -> "An unexpected error occurred."
                             }
                             code = ""
                         },

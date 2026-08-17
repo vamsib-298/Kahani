@@ -489,3 +489,64 @@ fun ContrastGlyph(modifier: Modifier = Modifier, size: Dp = 18.dp, tint: Color =
         )
     }
 }
+
+@Composable
+fun ProfileGlyph(modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Color = KahaniColors.TextMuted) {
+    Glyph(size, modifier) { stroke ->
+        val w = this.size.width
+        val h = this.size.height
+        
+        // Draw head (circle)
+        val headRadius = w * 0.25f
+        drawCircle(tint, radius = headRadius, center = Offset(w / 2f, h * 0.3f))
+        
+        // Draw body (path-like shape)
+        val bodyTop = h * 0.55f
+        val bodyBottom = h * 0.95f
+        val bodyLeftX = w * 0.2f
+        val bodyRightX = w * 0.8f
+        
+        drawLine(
+            tint,
+            start = Offset(bodyLeftX, bodyTop),
+            end = Offset(bodyRightX, bodyTop),
+            strokeWidth = stroke * 2,
+        )
+        drawLine(
+            tint,
+            start = Offset(bodyLeftX, bodyTop),
+            end = Offset(bodyLeftX, bodyBottom),
+            strokeWidth = stroke * 2,
+        )
+        drawLine(
+            tint,
+            start = Offset(bodyRightX, bodyTop),
+            end = Offset(bodyRightX, bodyBottom),
+            strokeWidth = stroke * 2,
+        )
+    }
+}
+
+@Composable
+fun UploadGlyph(modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Color = KahaniColors.TextMuted) {
+    Glyph(size, modifier) { stroke ->
+        val w = this.size.width
+        val h = this.size.height
+        
+        // Cloud body
+        val path = Path().apply {
+            moveTo(w * 0.2f, h * 0.75f)
+            cubicTo(w * 0.05f, h * 0.75f, w * 0.05f, h * 0.5f, w * 0.25f, h * 0.5f)
+            cubicTo(w * 0.25f, h * 0.25f, w * 0.75f, h * 0.25f, w * 0.75f, h * 0.5f)
+            cubicTo(w * 0.95f, h * 0.5f, w * 0.95f, h * 0.75f, w * 0.8f, h * 0.75f)
+            close()
+        }
+        drawPath(path, tint, style = Stroke(stroke))
+        
+        // Up arrow
+        drawLine(tint, Offset(w * 0.5f, h * 0.45f), Offset(w * 0.5f, h * 0.85f), stroke, cap = StrokeCap.Round)
+        drawLine(tint, Offset(w * 0.5f, h * 0.45f), Offset(w * 0.35f, h * 0.65f), stroke, cap = StrokeCap.Round)
+        drawLine(tint, Offset(w * 0.5f, h * 0.45f), Offset(w * 0.65f, h * 0.65f), stroke, cap = StrokeCap.Round)
+    }
+}
+

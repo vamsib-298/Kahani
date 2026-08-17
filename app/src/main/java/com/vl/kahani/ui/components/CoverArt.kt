@@ -17,12 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.vl.kahani.data.Series
 import com.vl.kahani.ui.theme.KahaniColors
 import com.vl.kahani.ui.theme.KahaniRadius
@@ -61,48 +64,67 @@ fun CoverArt(
             .border(1.dp, KahaniColors.Maroon600, RoundedCornerShape(cornerRadius)),
     ) {
         val w = maxWidth
-        Canvas(Modifier.fillMaxSize()) {
-            drawRect(Brush.linearGradient(base, start = Offset.Zero, end = Offset(size.width, size.height)))
-
-            val glowCenter = Offset(size.width * glowX, size.height * glowY)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(KahaniColors.Saffron.copy(alpha = 0.30f), KahaniColors.Saffron.copy(alpha = 0f)),
-                    center = glowCenter,
-                    radius = size.minDimension * 0.75f,
-                ),
-                radius = size.minDimension * 0.75f,
-                center = glowCenter,
+        
+        if (!series.coverUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = series.coverUrl,
+                contentDescription = series.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
+            // Overlay gradient for title legibility
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0.5f to Color.Transparent,
+                        1f to KahaniColors.Maroon950.copy(alpha = 0.7f)
+                    )
+                )
+            )
+        } else {
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(Brush.linearGradient(base, start = Offset.Zero, end = Offset(size.width, size.height)))
 
-            // Lamplight rings — the "storyteller's room" motif, kept very faint.
-            repeat(3) { i ->
+                val glowCenter = Offset(size.width * glowX, size.height * glowY)
                 drawCircle(
-                    color = KahaniColors.Saffron.copy(alpha = 0.06f),
-                    radius = size.minDimension * (0.30f + i * 0.22f),
+                    brush = Brush.radialGradient(
+                        colors = listOf(KahaniColors.Saffron.copy(alpha = 0.30f), KahaniColors.Saffron.copy(alpha = 0f)),
+                        center = glowCenter,
+                        radius = size.minDimension * 0.75f,
+                    ),
+                    radius = size.minDimension * 0.75f,
                     center = glowCenter,
-                    style = Stroke(width = size.minDimension * 0.012f),
+                )
+
+                // Lamplight rings — the "storyteller's room" motif, kept very faint.
+                repeat(3) { i ->
+                    drawCircle(
+                        color = KahaniColors.Saffron.copy(alpha = 0.06f),
+                        radius = size.minDimension * (0.30f + i * 0.22f),
+                        center = glowCenter,
+                        style = Stroke(width = size.minDimension * 0.012f),
+                    )
+                }
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0.45f to KahaniColors.Maroon950.copy(alpha = 0f),
+                        1f to KahaniColors.Maroon950.copy(alpha = 0.82f),
+                    ),
                 )
             }
 
-            drawRect(
-                brush = Brush.verticalGradient(
-                    0.45f to KahaniColors.Maroon950.copy(alpha = 0f),
-                    1f to KahaniColors.Maroon950.copy(alpha = 0.82f),
-                ),
+            Text(
+                text = series.title.take(1),
+                fontFamily = Narrative,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = (w.value * 0.5f).sp,
+                color = KahaniColors.TextPrimary.copy(alpha = 0.10f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(bottom = w * 0.12f),
             )
         }
-
-        Text(
-            text = series.title.take(1),
-            fontFamily = Narrative,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = (w.value * 0.5f).sp,
-            color = KahaniColors.TextPrimary.copy(alpha = 0.10f),
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(bottom = w * 0.12f),
-        )
 
         if (showTitle) {
             Text(

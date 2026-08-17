@@ -53,8 +53,9 @@ fun SearchScreen(modifier: Modifier = Modifier) {
     var languageFilter by remember { mutableStateOf<AppLanguage?>(null) }
     var freeToStart by remember { mutableStateOf(false) }
     var completedOnly by remember { mutableStateOf(false) }
+    var sortByMostPlayed by remember { mutableStateOf(false) }
 
-    val hasFilters = genreFilter != null || languageFilter != null || freeToStart || completedOnly
+    val hasFilters = genreFilter != null || languageFilter != null || freeToStart || completedOnly || sortByMostPlayed
 
     val results = store.visibleSeries().filter { series ->
         val q = query.trim().lowercase()
@@ -69,6 +70,8 @@ fun SearchScreen(modifier: Modifier = Modifier) {
         val matchesCompleted = !completedOnly || series.status == SeriesStatus.COMPLETED
         val matchesFree = !freeToStart || store.chapters(series.id).any { it.isFreePreview }
         matchesQuery && matchesGenre && matchesLanguage && matchesCompleted && matchesFree
+    }.let { list ->
+        if (sortByMostPlayed) list.sortedByDescending { it.playCount } else list
     }
 
     Column(modifier.fillMaxSize()) {
@@ -112,6 +115,11 @@ fun SearchScreen(modifier: Modifier = Modifier) {
                     selected = completedOnly,
                     onClick = { completedOnly = !completedOnly },
                 )
+                KahaniChip(
+                    label = "Most Played",
+                    selected = sortByMostPlayed,
+                    onClick = { sortByMostPlayed = !sortByMostPlayed },
+                )
                 if (hasFilters) {
                     KahaniChip(
                         label = strings.clearFilters,
@@ -120,6 +128,7 @@ fun SearchScreen(modifier: Modifier = Modifier) {
                             languageFilter = null
                             freeToStart = false
                             completedOnly = false
+                            sortByMostPlayed = false
                         },
                     )
                 }

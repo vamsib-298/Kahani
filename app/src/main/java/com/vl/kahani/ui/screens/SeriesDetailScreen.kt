@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.vl.kahani.data.Chapter
 import com.vl.kahani.data.Format
@@ -78,6 +79,10 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
     val nav = LocalNavigator.current
     val playback = LocalPlayback.current
 
+    LaunchedEffect(seriesId) {
+        store.incrementStat(seriesId, "read")
+    }
+
     val series = store.visibleSeries().firstOrNull { it.id == seriesId }
     val loader = rememberLoader(seriesId, willFail = series == null)
 
@@ -93,6 +98,22 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
             onBack = { nav.back() },
             actions = {
                 if (series != null) {
+                    var showReportDialog by remember { mutableStateOf(false) }
+                    
+                    IconTapTarget(onClick = { showReportDialog = true }) {
+                        Text("🚩", fontSize = 18.sp)
+                    }
+                    
+                    if (showReportDialog) {
+                        ReportDialog(
+                            onDismiss = { showReportDialog = false },
+                            onConfirm = { reason ->
+                                store.reportSeries(series.id, reason)
+                                showReportDialog = false
+                            }
+                        )
+                    }
+
                     IconTapTarget(onClick = { store.toggleSaved(series.id) }) {
                         BookmarkGlyph(
                             filled = store.savedSeriesIds.contains(series.id),
@@ -120,6 +141,11 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
 
             else -> {
                 val chapters = store.chapters(series.id)
+                if (chapters.isEmpty()) {
+                    DetailSkeleton()
+                    return@SeriesDetailScreen
+                }
+                
                 val progress = store.progress[series.id]
                 val resumeChapter = chapters.firstOrNull { it.id == progress?.chapterId } ?: chapters.first()
 
@@ -179,7 +205,7 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
 
                     item {
                         SectionHeader(
-                            label = "${series.totalChapters} ${strings.chaptersLabel}",
+                            label = strings.chaptersLabel,
                             modifier = Modifier.padding(
                                 start = KahaniSpacing.md,
                                 end = KahaniSpacing.md,
@@ -200,10 +226,8 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
                                 if (store.isUnlocked(chapter)) {
                                     openChapter(
                                         format = format,
-                                        series = series,
-                                        chapter = chapter,
                                         openReader = { nav.go(Screen.Reader(series.id, chapter.id)) },
-                                        startAudio = { playback.start(series, chapter) },
+                                        startAudio = { playback.start(series, chapter, audioUrl = chapter.audioUrl) },
                                     )
                                 } else {
                                     pendingFormat = format
@@ -311,6 +335,35 @@ private fun ReviewsSection(seriesId: String, onWriteReview: () -> Unit) {
 }
 
 @Composable
+private fun ReportDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var reason by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onDismiss) {
+        KahaniCard(Modifier.fillMaxWidth(), elevatedSurface = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(KahaniSpacing.md)) {
+                Text("Report Story", style = KahaniType.ChapterTitle, color = KahaniColors.TextPrimary)
+                Text("Help us keep Kahani safe. Why are you reporting this story?", style = KahaniType.Micro, color = KahaniColors.TextMuted)
+                
+                KahaniTextArea(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    hint = "Describe the issue (e.g. offensive content, audio quality)..."
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.sm)) {
+                    GhostButton("Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
+                    PrimaryButton(
+                        text = "Submit Report",
+                        enabled = reason.isNotBlank(),
+                        onClick = { onConfirm(reason) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ReviewRow(review: com.vl.kahani.data.Review) {
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -373,8 +426,6 @@ private fun ReviewDialog(
 
 private fun openChapter(
     format: Format,
-    series: Series,
-    chapter: Chapter,
     openReader: () -> Unit,
     startAudio: () -> Unit,
 ) {
@@ -400,7 +451,6 @@ private fun SeriesHeader(series: Series) {
             Text(series.title, style = KahaniType.SeriesTitle, color = KahaniColors.TextPrimary)
             Spacer(Modifier.height(KahaniSpacing.xs))
             Row(horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.xxs)) {
-                MetaTag(strings.genre(series.genre))
                 MetaTag(series.language.nativeName)
             }
             Spacer(Modifier.height(KahaniSpacing.xs))
@@ -409,7 +459,7 @@ private fun SeriesHeader(series: Series) {
             RatingStars(store.displayRating(series), store.ratingCount(series))
             Spacer(Modifier.height(KahaniSpacing.xs))
             Text(
-                "${strings.narratedBy} ${series.narratorName}",
+                if (series.uploaderName != null) "Author: ${series.uploaderName}" else "${strings.narratedBy} ${series.narratorName}",
                 style = KahaniType.Micro,
                 color = KahaniColors.TextMuted,
             )
@@ -509,8 +559,10 @@ private fun ChapterRow(
                 TextFormatGlyph(tint = if (unlocked) KahaniColors.TextPrimary else KahaniColors.TextMuted)
             }
             Spacer(Modifier.width(KahaniSpacing.xxs))
-            FormatButton(unlocked = unlocked, onClick = { onOpen(Format.AUDIO) }) {
-                AudioFormatGlyph(tint = if (unlocked) KahaniColors.TextPrimary else KahaniColors.TextMuted)
+            if (chapter.audioUrl != null) {
+                FormatButton(unlocked = unlocked, onClick = { onOpen(Format.AUDIO) }) {
+                    AudioFormatGlyph(tint = if (unlocked) KahaniColors.TextPrimary else KahaniColors.TextMuted)
+                }
             }
             Spacer(Modifier.width(KahaniSpacing.xs))
             when {

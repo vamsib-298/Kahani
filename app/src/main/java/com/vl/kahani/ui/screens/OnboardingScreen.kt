@@ -28,20 +28,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.vl.kahani.data.AppLanguage
 import com.vl.kahani.data.Genre
 import com.vl.kahani.data.LocalStore
 import com.vl.kahani.data.LocalStrings
+import com.vl.kahani.data.SeedCatalog
 import com.vl.kahani.ui.components.KahaniChip
 import com.vl.kahani.ui.components.PrimaryButton
 import com.vl.kahani.ui.components.SeriesPosterCard
 import com.vl.kahani.ui.theme.KahaniColors
+import com.vl.kahani.ui.theme.KahaniRadius
 import com.vl.kahani.ui.theme.KahaniSpacing
 import com.vl.kahani.ui.theme.KahaniType
 import com.vl.kahani.ui.theme.Narrative
@@ -51,21 +59,13 @@ import kotlinx.coroutines.delay
 fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
     val store = LocalStore.current
     val strings = LocalStrings.current
-    var step by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        delay(1500)
-        if (step == 0) step = 1
-    }
+    var step by remember(store.onboardingStep) { mutableIntStateOf(store.onboardingStep) }
 
     Box(
         modifier
             .fillMaxSize()
             .background(KahaniColors.Maroon900),
     ) {
-        AnimatedVisibility(visible = step == 0, enter = fadeIn(), exit = fadeOut()) {
-            Splash()
-        }
 
         AnimatedVisibility(visible = step == 1, enter = fadeIn(), exit = fadeOut()) {
             OnboardingStep(
@@ -73,14 +73,20 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
                 body = strings.chooseLanguageBody,
                 ctaLabel = strings.continueLabel,
                 ctaEnabled = store.contentLanguages.isNotEmpty(),
-                onCta = { step = 2 },
+                onCta = { 
+                    store.updateOnboardingStep(2)
+                    step = 2 
+                },
             ) {
                 ChipGrid(
-                    items = AppLanguage.entries.toList(),
-                    columns = 2,
+                    items = listOf(AppLanguage.TELUGU, AppLanguage.HINDI, AppLanguage.ENGLISH),
+                    columns = 1,
                     label = { it.nativeName },
                     selected = { store.contentLanguages.contains(it) },
-                    onToggle = { store.toggleContentLanguage(it) },
+                    onToggle = { 
+                        store.contentLanguages.clear()
+                        store.toggleContentLanguage(it) 
+                    },
                 )
             }
         }
@@ -95,7 +101,10 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
                     strings.pickAtLeastThree
                 },
                 ctaEnabled = store.genreInterests.size >= 3,
-                onCta = { step = 3 },
+                onCta = { 
+                    store.updateOnboardingStep(3)
+                    step = 3 
+                },
             ) {
                 ChipGrid(
                     items = Genre.entries.toList(),
@@ -108,19 +117,19 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
         }
 
         AnimatedVisibility(visible = step == 3, enter = fadeIn(), exit = fadeOut()) {
-            val picks = remember(store.genreInterests.size, store.contentLanguages.size) {
-                val byInterest = store.visibleSeries()
-                    .filter { store.genreInterests.contains(it.genre) }
-                    .sortedByDescending { it.ratingAvg }
-                (byInterest + store.visibleSeries().filter { it.isEditorsPick })
-                    .distinctBy { it.id }
+            val picks = remember(store.catalog.size) {
+                store.catalog
+                    .filter { it.onboardingRank != null && it.publishStatus == "PUBLISHED" }
+                    .sortedBy { it.onboardingRank }
                     .take(4)
             }
+            var selectedPick by remember { mutableStateOf<String?>(null) }
+
             OnboardingStep(
                 title = strings.starterPicksTitle,
                 body = strings.starterPicksBody,
                 ctaLabel = strings.enterKahani,
-                ctaEnabled = true,
+                ctaEnabled = selectedPick != null,
                 onCta = {
                     store.completeOnboarding()
                     onDone()
@@ -131,12 +140,29 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.sm),
                 ) {
                     picks.take(2).forEach { series ->
-                        SeriesPosterCard(
-                            series = series,
-                            onClick = { },
-                            modifier = Modifier.weight(1f),
-                            width = null,
-                        )
+                        val isSelected = selectedPick == series.id
+                        Box(Modifier.weight(1f)) {
+                            SeriesPosterCard(
+                                series = series,
+                                onClick = { selectedPick = series.id },
+                                modifier = Modifier.fillMaxWidth(),
+                                width = null,
+                                showMetadata = true,
+                                isSelected = isSelected,
+                            )
+                            if (isSelected) {
+                                Box(
+                                    Modifier
+                                        .padding(KahaniSpacing.xs)
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(KahaniColors.Saffron, RoundedCornerShape(KahaniRadius.pill)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("✓", color = KahaniColors.Maroon900, style = KahaniType.MicroBold)
+                                }
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(KahaniSpacing.sm))
@@ -145,58 +171,34 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
                     horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.sm),
                 ) {
                     picks.drop(2).forEach { series ->
-                        SeriesPosterCard(
-                            series = series,
-                            onClick = { },
-                            modifier = Modifier.weight(1f),
-                            width = null,
-                        )
+                        val isSelected = selectedPick == series.id
+                        Box(Modifier.weight(1f)) {
+                            SeriesPosterCard(
+                                series = series,
+                                onClick = { selectedPick = series.id },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(if (isSelected) Modifier.border(2.dp, androidx.compose.ui.graphics.Color.Yellow, RoundedCornerShape(KahaniRadius.cover)) else Modifier),
+                                width = null,
+                                showMetadata = true,
+                            )
+                            if (isSelected) {
+                                Box(
+                                    Modifier
+                                        .padding(KahaniSpacing.xs)
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp)
+                                        .background(KahaniColors.Saffron, RoundedCornerShape(KahaniRadius.pill)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("✓", color = KahaniColors.Maroon900, style = KahaniType.MicroBold)
+                                }
+                            }
+                        }
                     }
                     if (picks.size < 4) Spacer(Modifier.weight(1f))
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun Splash() {
-    val strings = LocalStrings.current
-    val transition = rememberInfiniteTransition(label = "splashGlow")
-    val glow by transition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
-        label = "glow",
-    )
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        KahaniColors.Saffron.copy(alpha = 0.16f * glow),
-                        KahaniColors.Saffron.copy(alpha = 0f),
-                    ),
-                    center = Offset(size.width / 2f, size.height / 2f),
-                    radius = size.minDimension * 0.65f,
-                ),
-                radius = size.minDimension * 0.65f,
-            )
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = strings.appName,
-                fontFamily = Narrative,
-                style = KahaniType.SeriesTitle,
-                color = KahaniColors.TextPrimary,
-            )
-            Spacer(Modifier.height(KahaniSpacing.xs))
-            Text(
-                text = strings.tagline,
-                style = KahaniType.Micro,
-                color = KahaniColors.TextMuted,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }

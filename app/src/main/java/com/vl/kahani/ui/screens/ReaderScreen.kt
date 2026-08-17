@@ -1,5 +1,8 @@
 package com.vl.kahani.ui.screens
 
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -39,9 +44,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vl.kahani.data.Format
+import com.google.android.play.core.review.ReviewManagerFactory
 import com.vl.kahani.data.LocalStore
 import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.ui.components.CheckGlyph
@@ -59,7 +65,6 @@ import com.vl.kahani.ui.theme.KahaniColors
 import com.vl.kahani.ui.theme.KahaniRadius
 import com.vl.kahani.ui.theme.KahaniSpacing
 import com.vl.kahani.ui.theme.KahaniType
-import com.vl.kahani.ui.theme.Narrative
 
 @Composable
 fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modifier) {
@@ -67,6 +72,13 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
     val strings = LocalStrings.current
     val nav = LocalNavigator.current
     val playback = LocalPlayback.current
+
+    // Stop audio playback when entering reader mode
+    LaunchedEffect(Unit) {
+        if (playback.isPlaying && playback.audioUrl != null) {
+            playback.togglePlay()
+        }
+    }
 
     val series = store.visibleSeries().firstOrNull { it.id == seriesId }
     val chapters = remember(seriesId) { store.chapters(seriesId) }
@@ -94,6 +106,26 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
 
     val dayMode = store.readerDayMode
     val highContrast = store.highContrastMode
+    
+    // Manage system bar colors for Reader Mode
+    val context = LocalContext.current
+    DisposableEffect(dayMode) {
+        val activity = context as? ComponentActivity
+        activity?.enableEdgeToEdge(
+            statusBarStyle = if (dayMode) SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT) 
+                            else SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = if (dayMode) SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                                else SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
+        onDispose {
+            // Restore dark theme system bars when leaving Reader
+            activity?.enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            )
+        }
+    }
+
     val background = if (dayMode) KahaniColors.ReaderLightBg else KahaniColors.Maroon950
     val ink = when {
         dayMode -> KahaniColors.ReaderLightInk
@@ -116,6 +148,23 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
     LaunchedEffect(currentId) {
         snapshotFlow { readFraction }.collect { fraction ->
             store.recordProgress(seriesId, currentId, Format.TEXT, fraction)
+            
+            // Collect Google Play Review after reading one chapter
+            // Show at last chapter or after 1 full chapter read
+            val isLastChapter = index == chapters.size - 1
+            if ((fraction > 0.95f || (isLastChapter && fraction > 0.5f)) && !store.hasRequestedPlayReview) {
+                val manager = ReviewManagerFactory.create(context)
+                val request = manager.requestReviewFlow()
+                request.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val reviewInfo = task.result
+                        (context as? android.app.Activity)?.let { activity ->
+                            manager.launchReviewFlow(activity, reviewInfo)
+                            store.markPlayReviewRequested()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -148,14 +197,14 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
                 ) { controlsVisible = !controlsVisible }
                 .padding(horizontal = KahaniSpacing.lg),
         ) {
-            Spacer(Modifier.height(72.dp))
+            Spacer(Modifier.statusBarsPadding().height(88.dp))
             Text(
                 text = "${strings.chapterLabel} ${chapter.chapterNumber}",
                 style = KahaniType.MicroBold,
-                color = KahaniColors.Saffron,
+                color = if (dayMode) Color(0xFF6200EE) else KahaniColors.Saffron, // Deep Purple for Day, Amber for Night
             )
-            Spacer(Modifier.height(KahaniSpacing.xs))
-            Text(chapter.title, style = KahaniType.ChapterTitle, color = ink)
+            Spacer(Modifier.height(KahaniSpacing.xxs))
+            Text(chapter.title, style = KahaniType.ChapterTitle, color = if (dayMode) Color(0xFF333333) else Color.White)
             Spacer(Modifier.height(KahaniSpacing.lg))
 
             paragraphs.forEach { paragraph ->
@@ -167,23 +216,6 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
                 Spacer(Modifier.height(KahaniSpacing.md))
             }
 
-            Spacer(Modifier.height(KahaniSpacing.lg))
-            Text(
-                text = "· · ·",
-                style = KahaniType.UiBody,
-                color = mutedInk,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(KahaniSpacing.sm))
-            Text(
-                text = "Sample chapter text. Final content comes from the editorial pipeline.",
-                style = KahaniType.Micro,
-                color = mutedInk,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             Spacer(Modifier.height(KahaniSpacing.xl))
             ChapterCompleteMoment(
                 visible = readFraction > 0.97f,
@@ -192,7 +224,7 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
                 mutedInk = mutedInk,
                 onNext = { if (hasNext) currentId = chapters[index + 1].id },
             )
-            Spacer(Modifier.height(120.dp))
+            Spacer(Modifier.height(200.dp))
         }
 
         AnimatedVisibility(
@@ -204,9 +236,9 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(background.copy(alpha = 0.96f))
+                    .background(background.copy(alpha = 0.98f))
                     .systemBarsPadding()
-                    .padding(horizontal = KahaniSpacing.xs, vertical = KahaniSpacing.xxs),
+                    .padding(horizontal = KahaniSpacing.xs, vertical = 0.dp), // Height reduced
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconTapTarget(onClick = { nav.back() }) {
@@ -220,10 +252,13 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
                         color = mutedInk,
                     )
                 }
-                GhostButton(
-                    text = strings.switchToAudio,
-                    onClick = { playback.start(series, chapter, readFraction) },
-                )
+                if (chapter.audioUrl != null) {
+                    GhostButton(
+                        text = strings.switchToAudio,
+                        onClick = { playback.start(series, chapter, readFraction, chapter.audioUrl) },
+                        contentColor = ink,
+                    )
+                }
                 Spacer(Modifier.width(KahaniSpacing.xs))
             }
         }
@@ -293,124 +328,63 @@ private fun ReaderControls(
     onOpenSeries: () -> Unit,
 ) {
     val store = LocalStore.current
-    val strings = LocalStrings.current
     Column(
         Modifier
             .fillMaxWidth()
-            .background(background.copy(alpha = 0.97f))
+            .background(background.copy(alpha = 0.98f))
             .systemBarsPadding()
-            .padding(horizontal = KahaniSpacing.md, vertical = KahaniSpacing.sm),
+            .padding(horizontal = KahaniSpacing.md, vertical = 0.dp), // Height reduced
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(strings.textSize, style = KahaniType.Micro, color = mutedInk, modifier = Modifier.weight(1f))
-            StepButton(label = "A", small = true, ink = ink) {
-                store.updateReaderFontSize(store.readerFontSize - 1f)
-            }
-            Spacer(Modifier.width(KahaniSpacing.xs))
-            Text(
-                "${store.readerFontSize.toInt()}",
-                style = KahaniType.UiBold,
-                color = ink,
-            )
-            Spacer(Modifier.width(KahaniSpacing.xs))
-            StepButton(label = "A", small = false, ink = ink) {
-                store.updateReaderFontSize(store.readerFontSize + 1f)
-            }
-        }
-        Spacer(Modifier.height(KahaniSpacing.sm))
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.xs),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ToggleChip(
-                label = if (store.readerDayMode) strings.dayMode else strings.nightMode,
-                selected = store.readerDayMode,
-                ink = ink,
-                onClick = { store.updateReaderDayMode(!store.readerDayMode) },
-            )
-            ToggleChip(
-                label = strings.highContrast,
-                selected = store.highContrastMode,
-                ink = ink,
-                onClick = { store.setHighContrast(!store.highContrastMode) },
-                leading = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTapTarget(onClick = { store.updateReaderFontSize(store.readerFontSize - 1f) }) {
+                    Text("A-", style = KahaniType.MicroBold, color = ink)
+                }
+                Text(
+                    "${store.readerFontSize.toInt()}",
+                    style = KahaniType.UiBold,
+                    color = ink,
+                    modifier = Modifier.padding(horizontal = KahaniSpacing.xxs)
+                )
+                IconTapTarget(onClick = { store.updateReaderFontSize(store.readerFontSize + 1f) }) {
+                    Text("A+", style = KahaniType.UiBold, color = ink)
+                }
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTapTarget(onClick = { store.updateReaderDayMode(!store.readerDayMode) }) {
+                    Text(if (store.readerDayMode) "🌙" else "☀️", style = KahaniType.UiBold)
+                }
+                Spacer(Modifier.width(KahaniSpacing.xs))
+                IconTapTarget(onClick = { store.setHighContrast(!store.highContrastMode) }) {
                     ContrastGlyph(
-                        size = 14.dp,
-                        tint = if (store.highContrastMode) KahaniColors.Maroon950 else mutedInk,
+                        size = 20.dp,
+                        tint = if (store.highContrastMode) KahaniColors.Saffron else ink,
                     )
-                },
-            )
-            Spacer(Modifier.weight(1f))
-            IconTapTarget(onClick = onPrevious) {
-                ChevronGlyph(
-                    ChevronDirection.LEFT,
-                    tint = if (hasPrevious) ink else mutedInk.copy(alpha = 0.4f),
-                )
+                }
             }
-            IconTapTarget(onClick = onOpenSeries) {
-                Text("☰", style = KahaniType.UiBold, color = ink)
-            }
-            IconTapTarget(onClick = onNext) {
-                ChevronGlyph(
-                    ChevronDirection.RIGHT,
-                    tint = if (hasNext) ink else mutedInk.copy(alpha = 0.4f),
-                )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTapTarget(onClick = onPrevious) {
+                    ChevronGlyph(
+                        ChevronDirection.LEFT,
+                        tint = if (hasPrevious) ink else mutedInk.copy(alpha = 0.4f),
+                    )
+                }
+                IconTapTarget(onClick = onOpenSeries) {
+                    Text("☰", style = KahaniType.UiBold, color = ink)
+                }
+                IconTapTarget(onClick = onNext) {
+                    ChevronGlyph(
+                        ChevronDirection.RIGHT,
+                        tint = if (hasNext) ink else mutedInk.copy(alpha = 0.4f),
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun StepButton(label: String, small: Boolean, ink: Color, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(KahaniRadius.chip))
-            .border(1.dp, KahaniColors.Maroon600, RoundedCornerShape(KahaniRadius.chip))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            fontFamily = Narrative,
-            style = if (small) KahaniType.Micro else KahaniType.CardTitle,
-            color = ink,
-        )
-    }
-}
-
-@Composable
-private fun ToggleChip(
-    label: String,
-    selected: Boolean,
-    ink: Color,
-    onClick: () -> Unit,
-    leading: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        Modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(KahaniRadius.pill))
-            .background(if (selected) KahaniColors.Saffron else Color.Transparent)
-            .border(
-                1.dp,
-                if (selected) KahaniColors.Saffron else KahaniColors.Maroon600,
-                RoundedCornerShape(KahaniRadius.pill),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = KahaniSpacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (leading != null) {
-            leading()
-            Spacer(Modifier.width(KahaniSpacing.xxs))
-        }
-        Text(
-            label,
-            style = KahaniType.UiMedium,
-            color = if (selected) KahaniColors.Maroon950 else ink,
-            maxLines = 1,
-        )
     }
 }

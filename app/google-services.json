@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "72252954148",
+    "project_id": "kahani-b0d53",
+    "storage_bucket": "kahani-b0d53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:72252954148:android:9ed0bef3d30ba16e88aab1",
+        "android_client_info": {
+          "package_name": "com.vl.kahani"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "72252954148-97ca5qmhul2ecugcpdha47u347nmt9l8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.vl.kahani",
+            "certificate_hash": "bb6f30fa22df4797dd0f0ad6d7d69222ac16d3ba"
+          }
+        },
+        {
+          "client_id": "72252954148-rid2t8moaj8d5rjhjvlc117endnebvmh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0A1SG866SYv-aHkVNHkqgjjE4qjiF3IM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "72252954148-rid2t8moaj8d5rjhjvlc117endnebvmh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

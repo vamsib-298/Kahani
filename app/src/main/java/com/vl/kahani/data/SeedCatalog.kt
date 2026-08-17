@@ -230,17 +230,21 @@ object SeedCatalog {
     )
 
     fun chaptersFor(seriesId: String): List<Chapter> {
-        val s = series.first { it.id == seriesId }
+        val s = series.firstOrNull { it.id == seriesId } ?: return emptyList()
         val seed = abs(seriesId.hashCode())
         return (1..s.totalChapters).map { n ->
             val free = n <= 3
             val words = 1200 + (seed + n * 137) % 800
+            // Generate deterministic sample audio URL for demo purposes
+            // In production, this would come from the backend
+            val audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${(seed + n) % 16 + 1}.mp3"
             Chapter(
                 id = "${seriesId}_ch$n",
                 seriesId = seriesId,
                 chapterNumber = n,
                 title = chapterTitlePool[(seed + n * 7) % chapterTitlePool.size],
                 textContent = sampleChapterText(s, n),
+                audioUrl = audioUrl, // Enable audio for all chapters in demo
                 durationSeconds = 8 * 60 + (seed + n * 53) % (7 * 60),
                 wordCount = words,
                 unlockCost = if (free) 0 else if (n % 5 == 0) 12 else 8,

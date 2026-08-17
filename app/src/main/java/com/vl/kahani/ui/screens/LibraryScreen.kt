@@ -52,7 +52,7 @@ fun LibraryScreen(modifier: Modifier = Modifier) {
     val items: List<Series> = when (tab) {
         LibraryTab.IN_PROGRESS -> store.inProgressSeries()
         LibraryTab.COMPLETED -> store.completedSeries()
-        LibraryTab.SAVED -> store.savedSeriesIds.mapNotNull { SeedCatalog.seriesById(it) }
+        LibraryTab.SAVED -> store.savedSeriesIds.mapNotNull { id -> store.catalog.firstOrNull { it.id == id } }
         LibraryTab.DOWNLOADS -> emptyList()
     }
 
@@ -163,7 +163,7 @@ private fun DownloadsTab() {
         }
         items(store.downloads.size) { index ->
             val download = store.downloads[index]
-            val series = SeedCatalog.seriesById(download.seriesId) ?: return@items
+            val series = store.catalog.firstOrNull { it.id == download.seriesId } ?: return@items
             val chapter = store.chapters(download.seriesId)
                 .firstOrNull { it.id == download.chapterId }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="maroon_950">#FF150A0D</color>
-    <color name="maroon_900">#FF2A1015</color>
-    <color name="maroon_800">#FF3A1820</color>
-    <color name="maroon_700">#FF452029</color>
-    <color name="maroon_600">#FF4A2A32</color>
-    <color name="saffron">#FFF2A93B</color>
-    <color name="text_primary">#FFF5EDE7</color>
-    <color name="text_muted">#FFC7A8A0</color>
+    <color name="maroon_950">#000000</color>
+    <color name="maroon_900">#0A0A0A</color>
+    <color name="saffron">#FFA000</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_muted">#AAAAAA</color>
+    <color name="splash_bg">#D32F2F</color>
 </resources>

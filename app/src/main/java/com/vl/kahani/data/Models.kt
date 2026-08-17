@@ -7,7 +7,8 @@ enum class Genre(val key: String) {
     COMEDY("comedy"),
     HORROR("horror"),
     FAMILY_DRAMA("family_drama"),
-    CRIME("crime");
+    CRIME("crime"),
+    LOVE("love");
 
     /** Genres hidden when the Family/Safe filter is on. */
     val isMature: Boolean get() = this == HORROR || this == CRIME
@@ -50,6 +51,16 @@ data class Series(
     val narrationType: NarrationType,
     val productionNote: String,
     val isMature: Boolean,
+    val uploaderId: String? = null,
+    val uploaderName: String? = null,
+    val coverUrl: String? = null,
+    val videoUrl: String? = null,
+    val publishStatus: String = "PENDING", // PENDING, PUBLISHED, REJECTED
+    val rejectionReason: String? = null,
+    val playCount: Int = 0,
+    val readCount: Int = 0,
+    val watchCount: Int = 0,
+    val onboardingRank: Int? = null, // 1, 2, 3, or 4
 )
 
 data class Chapter(
@@ -58,6 +69,7 @@ data class Chapter(
     val chapterNumber: Int,
     val title: String,
     val textContent: String,
+    val audioUrl: String? = null,
     val durationSeconds: Int,
     val wordCount: Int,
     val unlockCost: Int,

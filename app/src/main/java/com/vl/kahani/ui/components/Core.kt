@@ -84,6 +84,7 @@ fun GhostButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    contentColor: Color = KahaniColors.TextPrimary,
     leading: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -100,7 +101,7 @@ fun GhostButton(
             leading()
             Spacer(Modifier.width(KahaniSpacing.xs))
         }
-        Text(text, style = KahaniType.UiMedium, color = KahaniColors.TextPrimary, maxLines = 1)
+        Text(text, style = KahaniType.UiMedium, color = contentColor, maxLines = 1)
     }
 }
 
@@ -171,7 +172,7 @@ fun CoinPill(balance: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .heightIn(min = 40.dp)
             .clip(RoundedCornerShape(KahaniRadius.pill))
-            .background(KahaniColors.Maroon800)
+            .background(KahaniColors.Maroon950)
             .border(1.dp, KahaniColors.Maroon600, RoundedCornerShape(KahaniRadius.pill))
             .clickable(onClick = onClick)
             .padding(horizontal = KahaniSpacing.sm),
@@ -196,7 +197,7 @@ fun KahaniCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(KahaniRadius.card))
-            .background(if (elevatedSurface) KahaniColors.Maroon700 else KahaniColors.Maroon800)
+            .background(if (elevatedSurface) KahaniColors.Maroon800 else KahaniColors.Maroon900)
             .border(1.dp, KahaniColors.Maroon600, RoundedCornerShape(KahaniRadius.card))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(contentPadding),

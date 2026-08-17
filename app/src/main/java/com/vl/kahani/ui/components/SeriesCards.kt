@@ -1,5 +1,6 @@
 package com.vl.kahani.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,16 +38,21 @@ fun SeriesPosterCard(
     modifier: Modifier = Modifier,
     width: Dp? = 148.dp,
     progressFraction: Float? = null,
+    showMetadata: Boolean = false,
+    isSelected: Boolean = false,
 ) {
     val strings = LocalStrings.current
     val sizing = if (width != null) Modifier.width(width) else Modifier.fillMaxWidth()
     Column(
         modifier
             .then(sizing)
-            .clip(RoundedCornerShape(KahaniRadius.cover))
             .clickable(onClick = onClick),
     ) {
-        Box {
+        Box(
+            modifier = if (isSelected) {
+                Modifier.border(2.dp, androidx.compose.ui.graphics.Color.Yellow, RoundedCornerShape(KahaniRadius.cover))
+            } else Modifier
+        ) {
             CoverArt(
                 series = series,
                 modifier = Modifier
@@ -60,21 +66,25 @@ fun SeriesPosterCard(
                 )
             }
         }
-        Spacer(Modifier.height(KahaniSpacing.xs))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = strings.genre(series.genre),
-                style = KahaniType.MicroBold,
-                color = KahaniColors.TextMuted,
-                maxLines = 1,
-            )
-            Text(
-                text = "  ·  ${series.totalChapters}",
-                style = KahaniType.Micro,
-                color = KahaniColors.TextMuted,
-                maxLines = 1,
-            )
+        if (showMetadata) {
+            Spacer(Modifier.height(KahaniSpacing.xs))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = strings.genre(series.genre),
+                    style = KahaniType.MicroBold,
+                    color = KahaniColors.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "  ·  ${series.totalChapters}",
+                    style = KahaniType.Micro,
+                    color = KahaniColors.TextMuted,
+                    maxLines = 1,
+                )
+            }
         }
+        Spacer(Modifier.height(KahaniSpacing.xs))
     }
 }
 
@@ -84,6 +94,7 @@ fun SeriesListRow(
     series: Series,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showMetadata: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val strings = LocalStrings.current
@@ -110,14 +121,16 @@ fun SeriesListRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = "${strings.genre(series.genre)} · ${series.language.nativeName} · ${series.totalChapters} ${strings.chaptersLabel}",
-                style = KahaniType.Micro,
-                color = KahaniColors.TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (showMetadata) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "${strings.genre(series.genre)} · ${series.language.nativeName} · ${series.totalChapters} ${strings.chaptersLabel}",
+                    style = KahaniType.Micro,
+                    color = KahaniColors.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Spacer(Modifier.height(KahaniSpacing.xxs))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RatingStars(series.ratingAvg, 0)
@@ -142,12 +155,6 @@ fun PosterSkeleton(width: Dp = 148.dp, modifier: Modifier = Modifier) {
             cornerRadius = KahaniRadius.cover,
         )
         Spacer(Modifier.height(KahaniSpacing.xs))
-        ShimmerBox(
-            Modifier
-                .width(width * 0.6f)
-                .height(11.dp),
-            cornerRadius = 4.dp,
-        )
     }
 }
 
@@ -169,12 +176,6 @@ fun RowSkeleton(modifier: Modifier = Modifier) {
                 Modifier
                     .fillMaxWidth(0.7f)
                     .height(14.dp),
-                cornerRadius = 4.dp,
-            )
-            ShimmerBox(
-                Modifier
-                    .fillMaxWidth(0.45f)
-                    .height(11.dp),
                 cornerRadius = 4.dp,
             )
         }

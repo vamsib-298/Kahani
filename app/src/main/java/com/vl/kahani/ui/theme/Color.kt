@@ -3,25 +3,26 @@ package com.vl.kahani.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The complete Kahani palette. No hue outside this object may appear anywhere in the app.
- * Saffron is the single accent and only ever marks something actionable or important.
+ * Premium Minimalist Palette for Kahani.
+ * Reverted to eye-friendly Amber accent.
  */
 object KahaniColors {
-    val Maroon950 = Color(0xFF150A0D)
-    val Maroon900 = Color(0xFF2A1015)
-    val Maroon800 = Color(0xFF3A1820)
-    val Maroon700 = Color(0xFF452029)
-    val Maroon600 = Color(0xFF4A2A32)
+    // Pure Black Stack
+    val Maroon950 = Color(0xFF000000)
+    val Maroon900 = Color(0xFF000000)
+    val Maroon800 = Color(0xFF111111)
+    val Maroon700 = Color(0xFF1A1112)
+    val Maroon600 = Color(0xFF222222)
 
-    val Saffron = Color(0xFFF2A93B)
+    // Catchy Amber (Eye-friendly)
+    val Saffron = Color(0xFFFFA000)
 
-    val TextPrimary = Color(0xFFF5EDE7)
-    val TextMuted = Color(0xFFC7A8A0)
+    val TextPrimary = Color(0xFFFFFFFF)
+    val TextMuted = Color(0xFF999999)
 
-    val ReaderLightBg = Color(0xFFF5EDE7)
-    val ReaderLightInk = Color(0xFF2A1015)
+    val ReaderLightBg = Color(0xFFFFFFFF)
+    val ReaderLightInk = Color(0xFF000000)
 
-    /** High-contrast reading pair. Same family, pushed to the ends of the range. */
     val HighContrastInk = Color(0xFFFFFFFF)
-    val HighContrastMutedInk = Color(0xFFE8DCD6)
+    val HighContrastMutedInk = Color(0xFF888888)
 }

@@ -1,5 +1,7 @@
 package com.vl.kahani.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,20 +13,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.vl.kahani.data.AppLanguage
 import com.vl.kahani.data.LocalStore
 import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.ui.components.ContrastGlyph
 import com.vl.kahani.ui.components.DownloadGlyph
+import com.vl.kahani.ui.components.GhostButton
 import com.vl.kahani.ui.components.HairlineDivider
 import com.vl.kahani.ui.components.KahaniCard
 import com.vl.kahani.ui.components.KahaniChip
 import com.vl.kahani.ui.components.NavRow
+import com.vl.kahani.ui.components.PrimaryButton
 import com.vl.kahani.ui.components.ScreenTitleBar
 import com.vl.kahani.ui.components.SectionHeader
 import com.vl.kahani.ui.components.SettingToggleRow
@@ -41,6 +51,8 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val store = LocalStore.current
     val strings = LocalStrings.current
     val nav = LocalNavigator.current
+    val context = LocalContext.current
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier
@@ -174,12 +186,15 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             HairlineDivider()
             NavRow(
                 title = strings.helpSupport,
-                onClick = { },
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://kahani.app/support"))
+                    context.startActivity(intent)
+                },
             )
             HairlineDivider()
             NavRow(
                 title = strings.logOut,
-                onClick = { },
+                onClick = { showLogoutDialog = true },
             )
         }
 
@@ -193,6 +208,33 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             ),
         )
         Spacer(Modifier.height(KahaniSpacing.xxl))
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Log Out") },
+            text = { Text("Are you sure you want to log out? You'll need to sign in again to access your account.") },
+            confirmButton = {
+                PrimaryButton(
+                    text = "Log Out",
+                    onClick = {
+                        store.logout()
+                        nav.selectTab(Screen.Home)
+                        showLogoutDialog = false
+                    },
+                )
+            },
+            dismissButton = {
+                GhostButton(
+                    text = "Cancel",
+                    onClick = { showLogoutDialog = false },
+                )
+            },
+            containerColor = KahaniColors.Maroon800,
+            titleContentColor = KahaniColors.TextPrimary,
+            textContentColor = KahaniColors.TextMuted,
+        )
     }
 }
 
