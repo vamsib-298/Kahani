@@ -18,6 +18,8 @@
         .badge-pending { background: #FFA000; color: #000; }
         .badge-published { background: #4CAF50; color: #fff; }
         .badge-rejected { background: #F44336; color: #fff; }
+        .badge-live { background: #4CAF50; color: #fff; }
+        .badge-draft { background: #555; color: #fff; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .stat-box { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #222; }
@@ -294,9 +296,13 @@
             snap.forEach(chDoc => {
                 const ch = chDoc.data();
                 html += `
-                    <div class="chapter-box" style="margin:0">
-                        <b>${ch.chapterNumber}. ${ch.title}</b>
-                        <div style="display:flex; gap:5px; margin-top:5px">
+                    <div class="chapter-box" style="margin:0; background: ${ch.isLive ? '#111' : '#221'}">
+                        <div style="display:flex; justify-content: space-between">
+                            <b>${ch.chapterNumber}. ${ch.title}</b>
+                            <span class="badge badge-${ch.isLive ? 'live' : 'draft'}">${ch.isLive ? 'LIVE' : 'DRAFT'}</span>
+                        </div>
+                        <div style="display:flex; gap:5px; margin-top:10px">
+                            <button class="btn btn-primary" style="padding:4px 8px; font-size:0.8em" onclick="toggleChapterLive('${seriesId}', '${chDoc.id}', ${!ch.isLive})">${ch.isLive ? 'Go Draft' : 'Go Live'}</button>
                             <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.8em" onclick="editChapter('${seriesId}', '${chDoc.id}')">Edit</button>
                             <button class="btn btn-danger" style="padding:4px 8px; font-size:0.8em" onclick="deleteChapter('${seriesId}', '${chDoc.id}')">Delete</button>
                         </div>
@@ -326,6 +332,10 @@
 
         window.dismissReport = async (id) => {
             await deleteDoc(doc(db, "reports", id));
+        };
+
+        window.toggleChapterLive = async (seriesId, chId, live) => {
+            await updateDoc(doc(db, "series", seriesId, "chapters", chId), { isLive: live });
         };
 
         async function uploadFile(file, path) {
@@ -391,6 +401,7 @@
                         textContent: content,
                         audioUrl: audioUrl || null,
                         isFreePreview: (i < 3),
+                        isLive: true,
                         wordCount: content.split(/\s+/).length
                     });
                 }
@@ -493,13 +504,14 @@
                     textContent: chContent,
                     audioUrl,
                     isFreePreview: (nextNum <= 3),
+                    isLive: false, // Default new chapters to Draft
                     wordCount: chContent.split(/\s+/).length
                 });
 
                 // Update series total chapters
                 await updateDoc(doc(db, "series", seriesId), { totalChapters: nextNum });
 
-                alert("Chapter Published!"); hideModal();
+                alert("Chapter Saved as Draft!"); hideModal();
             };
         };
 

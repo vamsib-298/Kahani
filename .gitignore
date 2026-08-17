@@ -17,3 +17,5 @@
 .cxx
 local.properties
 .firebase/
+.artifacts/
+*.artifact.md

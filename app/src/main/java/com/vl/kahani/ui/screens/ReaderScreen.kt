@@ -53,7 +53,6 @@ import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.ui.components.CheckGlyph
 import com.vl.kahani.ui.components.ChevronDirection
 import com.vl.kahani.ui.components.ChevronGlyph
-import com.vl.kahani.ui.components.ContrastGlyph
 import com.vl.kahani.ui.components.GhostButton
 import com.vl.kahani.ui.components.IconTapTarget
 import com.vl.kahani.ui.components.PrimaryButton
@@ -201,10 +200,10 @@ fun ReaderScreen(seriesId: String, chapterId: String, modifier: Modifier = Modif
             Text(
                 text = "${strings.chapterLabel} ${chapter.chapterNumber}",
                 style = KahaniType.MicroBold,
-                color = if (dayMode) Color(0xFF6200EE) else KahaniColors.Saffron, // Deep Purple for Day, Amber for Night
+                color = if (dayMode) Color(0xFFE91E63) else KahaniColors.Saffron, // Pinkish for Day, Amber for Night
             )
             Spacer(Modifier.height(KahaniSpacing.xxs))
-            Text(chapter.title, style = KahaniType.ChapterTitle, color = if (dayMode) Color(0xFF333333) else Color.White)
+            Text(chapter.title, style = KahaniType.ChapterTitle, color = if (dayMode) Color(0xFF111111) else Color.White)
             Spacer(Modifier.height(KahaniSpacing.lg))
 
             paragraphs.forEach { paragraph ->
@@ -358,13 +357,6 @@ private fun ReaderControls(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconTapTarget(onClick = { store.updateReaderDayMode(!store.readerDayMode) }) {
                     Text(if (store.readerDayMode) "🌙" else "☀️", style = KahaniType.UiBold)
-                }
-                Spacer(Modifier.width(KahaniSpacing.xs))
-                IconTapTarget(onClick = { store.setHighContrast(!store.highContrastMode) }) {
-                    ContrastGlyph(
-                        size = 20.dp,
-                        tint = if (store.highContrastMode) KahaniColors.Saffron else ink,
-                    )
                 }
             }
 

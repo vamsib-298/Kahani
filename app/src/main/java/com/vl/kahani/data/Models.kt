@@ -74,6 +74,7 @@ data class Chapter(
     val wordCount: Int,
     val unlockCost: Int,
     val isFreePreview: Boolean,
+    val isLive: Boolean = true, // Control weekly releases
 )
 
 data class ReadingProgress(

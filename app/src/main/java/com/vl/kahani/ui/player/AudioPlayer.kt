@@ -73,8 +73,10 @@ class AudioPlayer(context: Context) : AudioManager.OnAudioFocusChangeListener {
                 
                 setOnPreparedListener {
                     isPrepared = true
-                    _duration = (it.duration.div(1000f))
-                    Log.d(TAG, "Audio prepared. Duration: $_duration seconds")
+                    val mediaDuration = (it.duration.div(1000f))
+                    // Always trust the real media file duration over the database
+                    _duration = mediaDuration
+                    Log.d(TAG, "Audio prepared. Real Duration: $_duration seconds")
                     onPrepared(_duration)
                     
                     pendingSeekSeconds?.let { seekTo ->

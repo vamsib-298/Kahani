@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,13 +37,23 @@ import com.vl.kahani.ui.components.BellGlyph
 import com.vl.kahani.ui.components.CoinPill
 import com.vl.kahani.ui.components.IconTapTarget
 import com.vl.kahani.ui.components.LoadState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.media3.common.Player
 import com.vl.kahani.ui.components.PosterSkeleton
 import com.vl.kahani.ui.components.PullToRefreshBox
 import com.vl.kahani.ui.components.SearchGlyph
 import com.vl.kahani.ui.components.SectionHeader
 import com.vl.kahani.ui.components.SeriesPosterCard
 import com.vl.kahani.ui.components.StateMessage
+import com.vl.kahani.ui.components.VideoTrailerPlayer
 import com.vl.kahani.ui.components.rememberLoader
+import com.vl.kahani.ui.theme.KahaniRadius
 import com.vl.kahani.ui.nav.LocalNavigator
 import com.vl.kahani.ui.nav.Screen
 import com.vl.kahani.ui.theme.KahaniColors
@@ -62,16 +73,17 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 
     LaunchedEffect(refreshing) {
         if (refreshing) {
-            delay(900)
+            delay(400) // Reduced delay for faster feedback
             refreshing = false
         }
     }
 
     val catalog = store.visibleSeries()
-    val continueSeries = store.inProgressSeries()
-    val picks = catalog.filter { it.isEditorsPick }
-    val fresh = catalog.filter { it.isNewThisWeek }
-    val interestGenres = store.genreInterests.ifEmpty { Genre.entries.toList() }
+    val continueSeries = remember(catalog, store.progress.size) { store.inProgressSeries() }
+    val picks = remember(catalog) { catalog.filter { it.isEditorsPick } }
+    val fresh = remember(catalog) { catalog.filter { it.isNewThisWeek } }
+    val trailers = remember(catalog) { catalog.filter { !it.videoUrl.isNullOrBlank() } }
+    val interestGenres = remember(store.genreInterests.size) { store.genreInterests.ifEmpty { Genre.entries.toList() } }
 
     Column(modifier.fillMaxSize()) {
         HomeTopBar()
@@ -106,6 +118,16 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                                 series = continueSeries,
                                 progressFor = { store.progress[it.id]?.fraction },
                                 onOpen = { nav.go(Screen.SeriesDetail(it.id)) },
+                            )
+                        }
+                    }
+
+                    if (trailers.isNotEmpty()) {
+                        item {
+                            TrailerShelf(
+                                label = "Top Trailers",
+                                series = trailers,
+                                onOpen = { nav.go(Screen.SeriesDetail(it.id)) }
                             )
                         }
                     }
@@ -158,7 +180,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     }
                     if (catalog.isEmpty()) {
                         item {
-                            Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillParentMaxHeight(0.8f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 StateMessage(
                                     title = "Your Story Begins Here",
                                     body = "The world of Kahani is currently being curated. Our storytellers are preparing thousands of chapters just for you. Check back very soon!",
@@ -249,6 +276,89 @@ private fun Shelf(
                     onClick = { onOpen(item) },
                     progressFraction = progressFor(item),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrailerShelf(
+    label: String,
+    series: List<Series>,
+    onOpen: (Series) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var activeIndex by remember { mutableIntStateOf(0) }
+    val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    LaunchedEffect(activeIndex) {
+        lazyListState.animateScrollToItem(activeIndex)
+    }
+
+    Column(modifier.fillMaxWidth()) {
+        SectionHeader(
+            label = label,
+            modifier = Modifier.padding(horizontal = KahaniSpacing.md),
+        )
+        Spacer(Modifier.height(KahaniSpacing.sm))
+        LazyRow(
+            state = lazyListState,
+            contentPadding = PaddingValues(horizontal = KahaniSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.md),
+        ) {
+            items(series.size) { index ->
+                val item = series[index]
+                val isActive = index == activeIndex
+                
+                Box(
+                    modifier = Modifier
+                        .size(width = 160.dp, height = 240.dp)
+                        .clip(RoundedCornerShape(KahaniRadius.cover))
+                        .background(KahaniColors.Maroon800)
+                        .clickable { onOpen(item) }
+                ) {
+                    VideoTrailerPlayer(
+                        videoUrl = item.videoUrl ?: "",
+                        isMuted = true,
+                        autoPlay = isActive,
+                        playerRepeatMode = if (series.size > 1) androidx.media3.common.Player.REPEAT_MODE_OFF else androidx.media3.common.Player.REPEAT_MODE_ONE,
+                        onVideoEnd = {
+                            if (isActive && series.size > 1) {
+                                activeIndex = (index + 1) % series.size
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    // Gradient overlay to make text pop
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                                    startY = 300f
+                                )
+                            )
+                    )
+                    Text(
+                        text = item.title,
+                        style = KahaniType.MicroBold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(KahaniSpacing.sm)
+                    )
+                    Box(
+                        Modifier
+                            .padding(KahaniSpacing.xs)
+                            .align(Alignment.TopEnd)
+                            .size(24.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(if (isActive) "▶" else "🎬", fontSize = 10.sp)
+                    }
+                }
             }
         }
     }

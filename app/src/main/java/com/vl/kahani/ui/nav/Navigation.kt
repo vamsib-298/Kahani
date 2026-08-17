@@ -40,7 +40,17 @@ class Navigator(private val startTab: Screen = Screen.Home) {
     }
 
     fun selectTab(tab: Screen) {
-        if (activeTab == tab && stacks[tab]?.size == 1) return
+        if (activeTab == tab) {
+            // Tapping the same tab again: reset that tab's stack to root
+            stacks[tab]?.let { stack ->
+                if (stack.size > 1) {
+                    while (stack.size > 1) {
+                        stack.removeAt(stack.lastIndex)
+                    }
+                }
+            }
+            return
+        }
         activeTab = tab
         // If the tab stack was cleared for some reason, restore the root
         if (stacks[tab]?.isEmpty() == true) {

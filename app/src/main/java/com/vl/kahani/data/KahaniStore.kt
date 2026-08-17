@@ -454,25 +454,43 @@ class KahaniStore(context: Context) {
     }
 
     fun chapters(seriesId: String): List<Chapter> {
-        val cached = chaptersCache[seriesId]
-        if (cached != null) return cached
-        
         db.collection("series").document(seriesId).collection("chapters")
             .orderBy("chapterNumber")
             .get()
             .addOnSuccessListener { snapshot ->
                 val fetched = snapshot.documents.mapNotNull { doc ->
                     try {
-                        Chapter(doc.id, seriesId, doc.getLong("chapterNumber")?.toInt() ?: 1, doc.getString("title") ?: "", doc.getString("textContent") ?: "", doc.getString("audioUrl"), doc.getLong("durationSeconds")?.toInt() ?: 300, doc.getLong("wordCount")?.toInt() ?: 1000, doc.getLong("unlockCost")?.toInt() ?: 0, doc.getBoolean("isFreePreview") ?: (doc.getLong("chapterNumber") ?: 1L <= 3L))
+                        Chapter(
+                            id = doc.id,
+                            seriesId = seriesId,
+                            chapterNumber = doc.getLong("chapterNumber")?.toInt() ?: 1,
+                            title = doc.getString("title") ?: "",
+                            textContent = doc.getString("textContent") ?: "",
+                            audioUrl = doc.getString("audioUrl"),
+                            durationSeconds = doc.getLong("durationSeconds")?.toInt() ?: 300,
+                            wordCount = doc.getLong("wordCount")?.toInt() ?: 1000,
+                            unlockCost = doc.getLong("unlockCost")?.toInt() ?: 0,
+                            isFreePreview = doc.getBoolean("isFreePreview") ?: (doc.getLong("chapterNumber") ?: 1L <= 3L),
+                            isLive = doc.getBoolean("isLive") ?: true
+                        )
                     } catch (e: Exception) { null }
                 }
                 if (fetched.isNotEmpty()) chaptersCache[seriesId] = fetched
             }
+
+        val user = auth.currentUser
+        val series = catalog.find { it.id == seriesId }
+        val allChapters = chaptersCache[seriesId] ?: emptyList()
         
-        return emptyList()
+        // Filter: Regular users only see 'Live' chapters. Author/Admin see all.
+        return if (user != null && (user.uid == series?.uploaderId || user.email == "dutypein@gmail.com")) {
+            allChapters
+        } else {
+            allChapters.filter { it.isLive }
+        }
     }
 
-    fun isUnlocked(chapter: Chapter): Boolean = chapter.isFreePreview || unlockedChapterIds.contains(chapter.id)
+    fun isUnlocked(chapter: Chapter): Boolean = (chapter.unlockCost <= 0) || chapter.isFreePreview || unlockedChapterIds.contains(chapter.id)
 
     // ---- Coins ---------------------------------------------------------------------
     fun canAfford(cost: Int): Boolean = coinBalance >= cost
@@ -497,8 +515,17 @@ class KahaniStore(context: Context) {
 
     fun canClaimDailyBonus(): Boolean {
         val now = System.currentTimeMillis()
-        val dayInMillis = 24 * 60 * 60 * 1000L
-        return (now - lastBonusClaimedAt) >= dayInMillis
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = now
+        val currentDay = calendar.get(java.util.Calendar.DAY_OF_YEAR)
+        val currentYear = calendar.get(java.util.Calendar.YEAR)
+        
+        val lastCalendar = java.util.Calendar.getInstance()
+        lastCalendar.timeInMillis = lastBonusClaimedAt
+        val lastDay = lastCalendar.get(java.util.Calendar.DAY_OF_YEAR)
+        val lastYear = lastCalendar.get(java.util.Calendar.YEAR)
+        
+        return (currentDay != lastDay || currentYear != lastYear)
     }
 
     fun claimDailyBonus(): Boolean {
@@ -564,8 +591,12 @@ class KahaniStore(context: Context) {
         pushToFirestore()
     }
     fun recordProgress(seriesId: String, chapterId: String, format: Format, fraction: Float) {
-        progress[seriesId] = ReadingProgress(seriesId, chapterId, format, fraction.coerceIn(0f, 1f), System.currentTimeMillis())
+        val f = fraction.coerceIn(0f, 1f)
+        progress[seriesId] = ReadingProgress(seriesId, chapterId, format, f, System.currentTimeMillis())
         prefs.writeSet(KEY_PROGRESS, progress.values.map { "${it.seriesId}|${it.chapterId}|${it.format}|${it.fraction}|${it.lastAccessedAt}" })
+        
+        // Instant sync: update series uploader stats or trigger local notification if needed
+        // Here we just ensure the local state is updated for LibraryScreen
     }
     fun inProgressSeries(): List<Series> = progress.values.sortedByDescending { it.lastAccessedAt }.mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }.filter { !familySafeMode || !it.isMature }
     fun completedSeries(): List<Series> = progress.values.filter { prog -> val s = catalog.firstOrNull { it.id == prog.seriesId }; prog.fraction >= 0.99f && s?.status == SeriesStatus.COMPLETED }.mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }

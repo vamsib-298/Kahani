@@ -213,6 +213,45 @@ fun BookmarkGlyph(
 }
 
 @Composable
+fun HeartGlyph(
+    modifier: Modifier = Modifier,
+    size: Dp = 18.dp,
+    filled: Boolean = false,
+    tint: Color = KahaniColors.TextPrimary,
+) {
+    Glyph(size, modifier) { stroke ->
+        val w = this.size.width
+        val h = this.size.height
+        val path = Path().apply {
+            moveTo(w * 0.5f, h * 0.82f)
+            cubicTo(w * 0.15f, h * 0.6f, w * 0.05f, h * 0.35f, w * 0.25f, h * 0.18f)
+            cubicTo(w * 0.45f, h * 0.05f, w * 0.5f, h * 0.3f, w * 0.5f, h * 0.3f)
+            cubicTo(w * 0.5f, h * 0.3f, w * 0.55f, h * 0.05f, w * 0.75f, h * 0.18f)
+            cubicTo(w * 0.95f, h * 0.35f, w * 0.85f, h * 0.6f, w * 0.5f, h * 0.82f)
+            close()
+        }
+        if (filled) drawPath(path, tint) else drawPath(path, tint, style = Stroke(stroke))
+    }
+}
+
+@Composable
+fun WarningGlyph(modifier: Modifier = Modifier, size: Dp = 18.dp, tint: Color = KahaniColors.TextMuted) {
+    Glyph(size, modifier) { stroke ->
+        val w = this.size.width
+        val h = this.size.height
+        val path = Path().apply {
+            moveTo(w * 0.5f, h * 0.15f)
+            lineTo(w * 0.15f, h * 0.85f)
+            lineTo(w * 0.85f, h * 0.85f)
+            close()
+        }
+        drawPath(path, tint, style = Stroke(stroke))
+        drawLine(tint, Offset(w * 0.5f, h * 0.4f), Offset(w * 0.5f, h * 0.65f), stroke, cap = StrokeCap.Round)
+        drawCircle(tint, radius = stroke * 0.8f, center = Offset(w * 0.5f, h * 0.76f))
+    }
+}
+
+@Composable
 fun HomeGlyph(modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Color = KahaniColors.TextMuted) {
     Glyph(size, modifier) { stroke ->
         val w = this.size.width
