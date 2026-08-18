@@ -30,12 +30,10 @@ import com.vl.kahani.ui.theme.KahaniSpacing
 import com.vl.kahani.ui.theme.KahaniType
 import kotlinx.coroutines.delay
 
-val LocalPipMode = staticCompositionLocalOf { false }
-
 private const val TICK_MS = 200L
 
 @Composable
-fun KahaniApp(isInPipMode: Boolean = false) {
+fun KahaniApp() {
     val context = LocalContext.current
     val store = remember { KahaniStore(context.applicationContext) }
     val navigator = rememberNavigator()
@@ -54,7 +52,6 @@ fun KahaniApp(isInPipMode: Boolean = false) {
         LocalStrings provides strings,
         LocalNavigator provides navigator,
         LocalPlayback provides playback,
-        LocalPipMode provides isInPipMode,
     ) {
         // Optimization: Use stable callbacks for tab selection
         val onTabSelected = remember(navigator) {
@@ -110,7 +107,7 @@ fun KahaniApp(isInPipMode: Boolean = false) {
                             Crossfade(targetState = screen, label = "screenTransition") { currentScreen ->
                                 when (currentScreen) {
                                     Screen.Home -> HomeScreen()
-                                    Screen.Search -> SearchScreen()
+                                    is Screen.Search -> SearchScreen(currentScreen.genre, currentScreen.language)
                                     Screen.Upload -> UploadScreen()
                                     Screen.Library -> LibraryScreen()
                                     Screen.Profile -> ProfileScreen()
@@ -123,7 +120,7 @@ fun KahaniApp(isInPipMode: Boolean = false) {
                             }
                         }
 
-                        if (!immersive && !isInPipMode) {
+                        if (!immersive) {
                             if (playback.isActive && !playback.expanded) {
                                 HairlineDivider()
                                 MiniPlayer()
@@ -137,7 +134,7 @@ fun KahaniApp(isInPipMode: Boolean = false) {
                     }
 
                     AnimatedVisibility(
-                        visible = playback.expanded && !isInPipMode,
+                        visible = playback.expanded,
                         enter = slideInVertically { it } + fadeIn(),
                         exit = slideOutVertically { it } + fadeOut(),
                     ) {
@@ -164,7 +161,7 @@ private fun BottomBar(active: Screen, onTabSelected: (Screen) -> Unit) {
         BottomTab(strings.navHome, active == Screen.Home, { onTabSelected(Screen.Home) }) {
             HomeGlyph(tint = it)
         }
-        BottomTab(strings.navSearch, active == Screen.Search, { onTabSelected(Screen.Search) }) {
+        BottomTab(strings.navSearch, active is Screen.Search, { onTabSelected(Screen.Search()) }) {
             SearchGlyph(size = 20.dp, tint = it)
         }
         BottomTab("Upload", active == Screen.Upload, { onTabSelected(Screen.Upload) }) {

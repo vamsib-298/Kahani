@@ -2,10 +2,12 @@ package com.vl.kahani.ui.nav
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.vl.kahani.data.AppLanguage
+import com.vl.kahani.data.Genre
 
 sealed interface Screen {
     data object Home : Screen
-    data object Search : Screen
+    data class Search(val genre: Genre? = null, val language: AppLanguage? = null) : Screen
     data object Upload : Screen
     data object Library : Screen
     data object Profile : Screen
@@ -22,7 +24,7 @@ sealed interface Screen {
 class Navigator(private val startTab: Screen = Screen.Home) {
     private val stacks = mutableStateMapOf<Screen, SnapshotStateList<Screen>>().apply {
         put(Screen.Home, mutableStateListOf(Screen.Home))
-        put(Screen.Search, mutableStateListOf(Screen.Search))
+        put(Screen.Search(), mutableStateListOf(Screen.Search()))
         put(Screen.Upload, mutableStateListOf(Screen.Upload))
         put(Screen.Library, mutableStateListOf(Screen.Library))
         put(Screen.Profile, mutableStateListOf(Screen.Profile))
@@ -40,9 +42,11 @@ class Navigator(private val startTab: Screen = Screen.Home) {
     }
 
     fun selectTab(tab: Screen) {
-        if (activeTab == tab) {
+        // Compare by type for primary tabs
+        val currentTab = activeTab
+        if (currentTab::class == tab::class) {
             // Tapping the same tab again: reset that tab's stack to root
-            stacks[tab]?.let { stack ->
+            stacks[activeTab]?.let { stack ->
                 if (stack.size > 1) {
                     while (stack.size > 1) {
                         stack.removeAt(stack.lastIndex)
@@ -53,8 +57,8 @@ class Navigator(private val startTab: Screen = Screen.Home) {
         }
         activeTab = tab
         // If the tab stack was cleared for some reason, restore the root
-        if (stacks[tab]?.isEmpty() == true) {
-            stacks[tab]?.add(tab)
+        if (stacks[activeTab]?.isEmpty() == true) {
+            stacks[activeTab]?.add(tab)
         }
     }
 

@@ -109,7 +109,7 @@ fun LibraryScreen(modifier: Modifier = Modifier) {
                     title = strings.libraryEmptyTitle,
                     body = strings.libraryEmptyBody,
                     actionLabel = strings.browseGenres,
-                    onAction = { nav.selectTab(Screen.Search) },
+                    onAction = { nav.selectTab(Screen.Search()) },
                 )
             } else {
                 LazyColumn(

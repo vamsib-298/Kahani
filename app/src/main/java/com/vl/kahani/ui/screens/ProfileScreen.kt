@@ -103,7 +103,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                         onDismissRequest = { showLangMenu = false },
                         modifier = Modifier.background(KahaniColors.Maroon800)
                     ) {
-                        listOf(AppLanguage.TELUGU, AppLanguage.HINDI, AppLanguage.ENGLISH).forEach { lang ->
+                        AppLanguage.entries.forEach { lang ->
                             DropdownMenuItem(
                                 text = { Text(lang.nativeName, color = KahaniColors.TextPrimary) },
                                 onClick = {
@@ -216,7 +216,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
 
         // Preferred Languages
         SettingsSection("Preferred Content") {
-            val languages = listOf(AppLanguage.TELUGU, AppLanguage.HINDI, AppLanguage.ENGLISH)
+            val languages = AppLanguage.entries.toList()
             Row(
                 Modifier.padding(KahaniSpacing.sm).horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.xs),

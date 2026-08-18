@@ -447,17 +447,19 @@ class KahaniStore(context: Context) {
     fun visibleSeries(): List<Series> {
         val user = auth.currentUser
         val selectedCodes = contentLanguages.map { it.code }
-        val filtered = catalog.filter { 
-            // Only published stories or my own uploads
-            val isPublished = it.publishStatus == "PUBLISHED"
+        return catalog.filter { 
             val isMine = user != null && it.uploaderId == user.uid
             
-            val visibilityMatch = isPublished || isMine
+            // Always show your own stories for easy testing
+            if (isMine) return@filter true
+
+            // Strict Filtering for others: Only show Published + Selected Languages + Safe Content
+            val isPublished = it.publishStatus == "PUBLISHED"
             val langMatch = selectedCodes.isEmpty() || it.language.code in selectedCodes
             val safeMatch = !familySafeMode || (!it.isMature && !it.genre.isMature)
-            langMatch && safeMatch && visibilityMatch
+            
+            isPublished && langMatch && safeMatch
         }
-        return filtered
     }
 
     fun chapters(seriesId: String): List<Chapter> {

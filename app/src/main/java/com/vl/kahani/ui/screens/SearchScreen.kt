@@ -29,6 +29,7 @@ import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.data.SeriesStatus
 import com.vl.kahani.ui.components.KahaniChip
 import com.vl.kahani.ui.components.KahaniSearchField
+import com.vl.kahani.ui.components.ScreenTitleBar
 import com.vl.kahani.ui.components.RowSkeleton
 import com.vl.kahani.ui.components.SectionHeader
 import com.vl.kahani.ui.components.SeriesListRow
@@ -42,15 +43,19 @@ import com.vl.kahani.ui.theme.KahaniSpacing
 import com.vl.kahani.ui.theme.KahaniType
 
 @Composable
-fun SearchScreen(modifier: Modifier = Modifier) {
+fun SearchScreen(
+    initialGenre: Genre? = null,
+    initialLanguage: AppLanguage? = null,
+    modifier: Modifier = Modifier
+) {
     val store = LocalStore.current
     val strings = LocalStrings.current
     val nav = LocalNavigator.current
     val loader = rememberLoader()
 
     var query by remember { mutableStateOf("") }
-    var genreFilter by remember { mutableStateOf<Genre?>(null) }
-    var languageFilter by remember { mutableStateOf<AppLanguage?>(null) }
+    var genreFilter by remember { mutableStateOf(initialGenre) }
+    var languageFilter by remember { mutableStateOf(initialLanguage) }
     var freeToStart by remember { mutableStateOf(false) }
     var completedOnly by remember { mutableStateOf(false) }
     var sortByMostPlayed by remember { mutableStateOf(false) }
@@ -75,6 +80,14 @@ fun SearchScreen(modifier: Modifier = Modifier) {
     }
 
     Column(modifier.fillMaxSize()) {
+        ScreenTitleBar(
+            title = when {
+                genreFilter != null && languageFilter != null -> "${strings.genre(genreFilter!!)} · ${languageFilter?.nativeName}"
+                genreFilter != null -> strings.genre(genreFilter!!)
+                languageFilter != null -> languageFilter?.nativeName ?: strings.navSearch
+                else -> strings.navSearch
+            }
+        )
         Column(Modifier.padding(horizontal = KahaniSpacing.md, vertical = KahaniSpacing.xs)) {
             KahaniSearchField(
                 value = query,
@@ -183,6 +196,17 @@ fun SearchScreen(modifier: Modifier = Modifier) {
                         }
                     }
                     item { Spacer(Modifier.height(KahaniSpacing.md)) }
+                }
+
+                if (results.isNotEmpty() && (hasFilters || query.isNotBlank())) {
+                    item {
+                        Text(
+                            text = "${results.size} stories found",
+                            style = KahaniType.Micro,
+                            color = KahaniColors.TextMuted,
+                            modifier = Modifier.padding(vertical = KahaniSpacing.xs)
+                        )
+                    }
                 }
 
                 if (results.isEmpty()) {

@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vl.kahani.data.Genre
-import com.vl.kahani.ui.LocalPipMode
 import com.vl.kahani.data.LocalStore
 import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.data.Series
@@ -47,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.vl.kahani.ui.components.PosterSkeleton
+import com.vl.kahani.ui.components.PrimaryButton
 import com.vl.kahani.ui.components.PullToRefreshBox
 import com.vl.kahani.ui.components.SearchGlyph
 import com.vl.kahani.ui.components.SectionHeader
@@ -68,7 +68,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val store = LocalStore.current
     val strings = LocalStrings.current
     val nav = LocalNavigator.current
-    val isInPip = LocalPipMode.current
     val loader = rememberLoader()
     var refreshing by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -89,7 +88,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val interestGenres = remember(store.genreInterests.size) { store.genreInterests.ifEmpty { Genre.entries.toList() } }
 
     Column(modifier.fillMaxSize()) {
-        if (!isInPip) HomeTopBar()
+        HomeTopBar()
 
         when {
             loader.state == LoadState.LOADING || store.isCatalogLoading -> HomeSkeleton()
@@ -144,6 +143,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                                     label = strings.genre(genre),
                                     series = inGenre,
                                     onOpen = { nav.go(Screen.SeriesDetail(it.id)) },
+                                    onSeeAll = { nav.go(Screen.Search(genre = genre)) }
                                 )
                             }
                         }
@@ -177,10 +177,26 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                                     label = strings.genre(genre),
                                     series = inGenre,
                                     onOpen = { nav.go(Screen.SeriesDetail(it.id)) },
+                                    onSeeAll = { nav.go(Screen.Search(genre = genre)) }
                                 )
                             }
                         }
                     }
+
+                    if (store.contentLanguages.size == 1) {
+                        val lang = store.contentLanguages.first()
+                        item {
+                            Spacer(Modifier.height(KahaniSpacing.md))
+                            Box(Modifier.padding(horizontal = KahaniSpacing.md)) {
+                                PrimaryButton(
+                                    text = "Explore All ${lang.nativeName} Stories",
+                                    onClick = { nav.go(Screen.Search(language = lang)) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
                     if (catalog.isEmpty()) {
                         item {
                             Box(
@@ -191,7 +207,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             ) {
                                 StateMessage(
                                     title = "Your Story Begins Here",
-                                    body = "The world of Kahani is currently being curated. Our storytellers are preparing thousands of chapters just for you. Check back very soon!",
+                                    body = "The world of Kahani is currently being curated. Try changing your language settings in the Profile tab to discover more stories!",
                                 )
                             }
                         }
@@ -246,7 +262,7 @@ private fun HomeTopBar() {
                 )
             }
         }
-        IconTapTarget(onClick = { nav.selectTab(Screen.Search) }) {
+        IconTapTarget(onClick = { nav.selectTab(Screen.Search()) }) {
             SearchGlyph(size = 20.dp, tint = KahaniColors.TextPrimary)
         }
         Spacer(Modifier.width(KahaniSpacing.xxs))
@@ -261,18 +277,31 @@ private fun Shelf(
     onOpen: (Series) -> Unit,
     modifier: Modifier = Modifier,
     progressFor: (Series) -> Float? = { null },
+    onSeeAll: (() -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth()) {
         SectionHeader(
             label = label,
             modifier = Modifier.padding(horizontal = KahaniSpacing.md),
+            trailing = onSeeAll?.let {
+                {
+                    Text(
+                        text = "See All",
+                        style = KahaniType.Micro,
+                        color = KahaniColors.Saffron,
+                        modifier = Modifier
+                            .clickable(onClick = it)
+                            .padding(KahaniSpacing.xs)
+                    )
+                }
+            }
         )
         Spacer(Modifier.height(KahaniSpacing.sm))
         LazyRow(
             contentPadding = PaddingValues(horizontal = KahaniSpacing.md),
             horizontalArrangement = Arrangement.spacedBy(KahaniSpacing.sm),
         ) {
-            items(series.size) { index ->
+            items(series.size.coerceAtMost(15)) { index -> // Limit shelf to 15, then use See All
                 val item = series[index]
                 SeriesPosterCard(
                     series = item,

@@ -584,7 +584,7 @@ private fun ChapterUploadForm(storyId: String, chapterNum: Int, editingId: Strin
                             "title" to title,
                             "textContent" to textContent,
                             "isFreePreview" to (chapterNum <= 3),
-                            "unlockCost" to if (chapterNum <= 3) 0 else 10,
+                            "unlockCost" to (if (chapterNum <= 3) 0 else 10),
                             "wordCount" to textContent.split("\\s+".toRegex()).size,
                             "lastUpdated" to com.google.firebase.Timestamp.now()
                         )

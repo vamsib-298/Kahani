@@ -83,6 +83,7 @@
         <div class="nav-item active" id="nav-review" onclick="showView('review')">Review Queue</div>
         <div class="nav-item" id="nav-upload" onclick="showView('upload')">Create New Series</div>
         <div class="nav-item" id="nav-reports" onclick="showView('reports')">User Reports</div>
+        <a href="mass_uploader.html" style="text-decoration:none;"><div class="nav-item" style="color:#FFA000; border:1px solid #332200; background:#141000; margin-top:15px;">⚡ Masterpiece Forge</div></a>
         <div style="position: absolute; bottom: 30px; width: calc(100% - 40px);">
             <button class="btn btn-secondary" style="width: 100%;" onclick="handleLogout()">Logout</button>
         </div>
@@ -113,6 +114,11 @@
                         <option value="te">Telugu</option>
                         <option value="hi">Hindi</option>
                         <option value="en">English</option>
+                        <option value="ta">Tamil</option>
+                        <option value="bn">Bengali</option>
+                        <option value="mr">Marathi</option>
+                        <option value="kn">Kannada</option>
+                        <option value="ml">Malayalam</option>
                     </select>
                 </div>
 
@@ -443,6 +449,11 @@
                         <option value="te" ${story.language==='te'?'selected':''}>Telugu</option>
                         <option value="hi" ${story.language==='hi'?'selected':''}>Hindi</option>
                         <option value="en" ${story.language==='en'?'selected':''}>English</option>
+                        <option value="ta" ${story.language==='ta'?'selected':''}>Tamil</option>
+                        <option value="bn" ${story.language==='bn'?'selected':''}>Bengali</option>
+                        <option value="mr" ${story.language==='mr'?'selected':''}>Marathi</option>
+                        <option value="kn" ${story.language==='kn'?'selected':''}>Kannada</option>
+                        <option value="ml" ${story.language==='ml'?'selected':''}>Malayalam</option>
                     </select>
                 </div>
                 <label class="file-label">Update Cover (Recommended 3:4 Portrait)</label>

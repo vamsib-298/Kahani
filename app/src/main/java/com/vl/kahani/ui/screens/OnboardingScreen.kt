@@ -79,14 +79,11 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
                 },
             ) {
                 ChipGrid(
-                    items = listOf(AppLanguage.TELUGU, AppLanguage.HINDI, AppLanguage.ENGLISH),
+                    items = AppLanguage.entries.toList(),
                     columns = 1,
                     label = { it.nativeName },
                     selected = { store.contentLanguages.contains(it) },
-                    onToggle = { 
-                        store.contentLanguages.clear()
-                        store.toggleContentLanguage(it) 
-                    },
+                    onToggle = { store.toggleContentLanguage(it) },
                 )
             }
         }
@@ -118,10 +115,10 @@ fun OnboardingFlow(onDone: () -> Unit, modifier: Modifier = Modifier) {
 
         AnimatedVisibility(visible = step == 3, enter = fadeIn(), exit = fadeOut()) {
             val picks = remember(store.catalog.size) {
-                store.catalog
+                val ranked = store.catalog
                     .filter { it.onboardingRank != null && it.publishStatus == "PUBLISHED" }
                     .sortedBy { it.onboardingRank }
-                    .take(4)
+                if (ranked.isNotEmpty()) ranked.take(4) else store.catalog.filter { it.publishStatus == "PUBLISHED" }.take(4)
             }
             var selectedPick by remember { mutableStateOf<String?>(null) }
 
