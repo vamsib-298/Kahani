@@ -49,11 +49,13 @@ fun LibraryScreen(modifier: Modifier = Modifier) {
     val loader = rememberLoader()
     var tab by remember { mutableStateOf(LibraryTab.IN_PROGRESS) }
 
-    val items: List<Series> = when (tab) {
-        LibraryTab.IN_PROGRESS -> store.inProgressSeries()
-        LibraryTab.COMPLETED -> store.completedSeries()
-        LibraryTab.SAVED -> store.savedSeriesIds.mapNotNull { id -> store.catalog.firstOrNull { it.id == id } }
-        LibraryTab.DOWNLOADS -> emptyList()
+    val items: List<Series> = remember(tab, store.lastProgressUpdate, store.catalog.size) {
+        when (tab) {
+            LibraryTab.IN_PROGRESS -> store.inProgressSeries()
+            LibraryTab.COMPLETED -> store.completedSeries()
+            LibraryTab.SAVED -> store.savedSeriesIds.mapNotNull { id -> store.catalog.firstOrNull { it.id == id } }
+            LibraryTab.DOWNLOADS -> emptyList()
+        }
     }
 
     Column(modifier.fillMaxSize()) {

@@ -401,6 +401,7 @@
                         textContent: content,
                         audioUrl: audioUrl || null,
                         isFreePreview: (i < 3),
+                        unlockCost: (i < 3) ? 0 : 10,
                         isLive: true,
                         wordCount: content.split(/\s+/).length
                     });
@@ -504,6 +505,7 @@
                     textContent: chContent,
                     audioUrl,
                     isFreePreview: (nextNum <= 3),
+                    unlockCost: (nextNum <= 3) ? 0 : 10,
                     isLive: false, // Default new chapters to Draft
                     wordCount: chContent.split(/\s+/).length
                 });
@@ -522,6 +524,8 @@
             modalBody.innerHTML = `
                 <input type="text" id="edit-ch-title" value="${ch.title}">
                 <textarea id="edit-ch-content" rows="10">${ch.textContent}</textarea>
+                <label class="file-label">Unlock Cost (0 = Free)</label>
+                <input type="number" id="edit-ch-cost" value="${ch.unlockCost || 0}">
                 <label class="file-label">Update Audio</label>
                 <input type="file" id="edit-ch-audio-file" accept="audio/*">
                 <input type="text" id="edit-ch-audio-url" value="${ch.audioUrl || ''}" placeholder="Audio URL">
@@ -538,6 +542,7 @@
                 await updateDoc(doc(db, "series", seriesId, "chapters", chId), {
                     title: document.getElementById('edit-ch-title').value,
                     textContent: document.getElementById('edit-ch-content').value,
+                    unlockCost: parseInt(document.getElementById('edit-ch-cost').value) || 0,
                     audioUrl,
                     wordCount: document.getElementById('edit-ch-content').value.split(/\s+/).length
                 });

@@ -30,21 +30,31 @@ import com.vl.kahani.ui.theme.KahaniSpacing
 import com.vl.kahani.ui.theme.KahaniType
 import kotlinx.coroutines.delay
 
+val LocalPipMode = staticCompositionLocalOf { false }
+
 private const val TICK_MS = 200L
 
 @Composable
-fun KahaniApp() {
+fun KahaniApp(isInPipMode: Boolean = false) {
     val context = LocalContext.current
     val store = remember { KahaniStore(context.applicationContext) }
     val navigator = rememberNavigator()
     val playback = rememberPlaybackController()
     val strings = stringsFor(store.uiLanguage)
 
+    LaunchedEffect(store.rewardMessage) {
+        store.rewardMessage?.let { msg ->
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+            store.rewardMessage = null
+        }
+    }
+
     CompositionLocalProvider(
         LocalStore provides store,
         LocalStrings provides strings,
         LocalNavigator provides navigator,
         LocalPlayback provides playback,
+        LocalPipMode provides isInPipMode,
     ) {
         // Optimization: Use stable callbacks for tab selection
         val onTabSelected = remember(navigator) {
@@ -57,9 +67,9 @@ fun KahaniApp() {
                 delay(TICK_MS)
                 val finished = playback.tick(TICK_MS / 1000f)
                 playback.series?.let { series ->
-                    store.addListenTime((TICK_MS / 1000).toInt())
+                    store.addListenTime(TICK_MS / 1000f)
                     playback.chapter?.let { chapter ->
-                        store.recordProgress(series.id, chapter.id, Format.AUDIO, playback.fraction)
+                        store.recordProgress(series.id, chapter.id, if (playback.audioUrl != null) Format.AUDIO else Format.TEXT, playback.fraction)
                     }
                 }
                 if (finished) break
@@ -113,7 +123,7 @@ fun KahaniApp() {
                             }
                         }
 
-                        if (!immersive) {
+                        if (!immersive && !isInPipMode) {
                             if (playback.isActive && !playback.expanded) {
                                 HairlineDivider()
                                 MiniPlayer()
@@ -127,7 +137,7 @@ fun KahaniApp() {
                     }
 
                     AnimatedVisibility(
-                        visible = playback.expanded,
+                        visible = playback.expanded && !isInPipMode,
                         enter = slideInVertically { it } + fadeIn(),
                         exit = slideOutVertically { it } + fadeOut(),
                     ) {

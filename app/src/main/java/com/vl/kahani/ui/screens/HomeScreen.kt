@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vl.kahani.data.Genre
+import com.vl.kahani.ui.LocalPipMode
 import com.vl.kahani.data.LocalStore
 import com.vl.kahani.data.LocalStrings
 import com.vl.kahani.data.Series
@@ -67,26 +68,28 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val store = LocalStore.current
     val strings = LocalStrings.current
     val nav = LocalNavigator.current
+    val isInPip = LocalPipMode.current
     val loader = rememberLoader()
     var refreshing by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(refreshing) {
         if (refreshing) {
-            delay(400) // Reduced delay for faster feedback
+            store.fetchCatalog() // Force actual re-fetch from Firestore
+            delay(400)
             refreshing = false
         }
     }
 
     val catalog = store.visibleSeries()
-    val continueSeries = remember(catalog, store.progress.size) { store.inProgressSeries() }
+    val continueSeries = remember(catalog, store.lastProgressUpdate) { store.inProgressSeries() }
     val picks = remember(catalog) { catalog.filter { it.isEditorsPick } }
     val fresh = remember(catalog) { catalog.filter { it.isNewThisWeek } }
     val trailers = remember(catalog) { catalog.filter { !it.videoUrl.isNullOrBlank() } }
     val interestGenres = remember(store.genreInterests.size) { store.genreInterests.ifEmpty { Genre.entries.toList() } }
 
     Column(modifier.fillMaxSize()) {
-        HomeTopBar()
+        if (!isInPip) HomeTopBar()
 
         when {
             loader.state == LoadState.LOADING || store.isCatalogLoading -> HomeSkeleton()

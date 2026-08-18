@@ -62,7 +62,7 @@ fun SeriesDetailScreen(seriesId: String, modifier: Modifier = Modifier) {
                 if (series != null) {
                     var showReportDialog by remember { mutableStateOf(false) }
                     IconTapTarget(onClick = { showReportDialog = true }) {
-                        WarningGlyph(tint = KahaniColors.TextMuted)
+                        ShieldGlyph(tint = KahaniColors.TextMuted)
                     }
                     if (showReportDialog) {
                         ReportDialog(
@@ -446,7 +446,7 @@ private fun ChapterRow(chapter: Chapter, unlocked: Boolean, justUnlocked: Boolea
             }
             Spacer(Modifier.width(KahaniSpacing.xs))
             when {
-                chapter.isFreePreview -> MetaTag(strings.freeLabel)
+                chapter.isFreePreview || chapter.unlockCost <= 0 -> MetaTag(strings.freeLabel)
                 unlocked -> Box(Modifier.size(20.dp))
                 else -> Row(Modifier.clip(RoundedCornerShape(KahaniRadius.pill)).background(KahaniColors.Saffron).clickable { onOpen(Format.TEXT) }.padding(horizontal = KahaniSpacing.xs, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     LockGlyph(size = 12.dp, tint = KahaniColors.Maroon950)

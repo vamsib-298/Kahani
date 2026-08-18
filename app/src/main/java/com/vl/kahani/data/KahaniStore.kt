@@ -94,6 +94,13 @@ class KahaniStore(context: Context) {
     var lastListenDate by mutableStateOf(prefs.getString("last_listen_date", "") ?: "")
         private set
 
+    var listenSubSeconds by mutableFloatStateOf(prefs.getFloat("listen_sub_seconds", 0f))
+        private set
+
+    var lastProgressUpdate by mutableLongStateOf(0L)
+
+    var rewardMessage by mutableStateOf<String?>(null)
+
     val unlockedChapterIds = mutableStateListOf<String>().apply {
         addAll(prefs.readSet(KEY_UNLOCKED))
     }
@@ -229,7 +236,7 @@ class KahaniStore(context: Context) {
         notifications.removeAll { it.id == id }
     }
 
-    private fun fetchCatalog() {
+    fun fetchCatalog() {
         isCatalogLoading = true
         catalogListener?.remove()
         catalogListener = db.collection("series").addSnapshotListener { result, error ->
@@ -544,23 +551,32 @@ class KahaniStore(context: Context) {
         prefs.writeSet(KEY_UNLOCKED, unlockedChapterIds)
     }
 
-    fun addListenTime(seconds: Int) {
+    fun addListenTime(seconds: Float) {
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         if (today != lastListenDate) {
             todayListenSeconds = 0
+            listenSubSeconds = 0f
             lastListenDate = today
-            prefs.edit().putString("last_listen_date", today).apply()
+            prefs.edit().putString("last_listen_date", today).putFloat("listen_sub_seconds", 0f).apply()
         }
         
         val oldSeconds = todayListenSeconds
-        todayListenSeconds += seconds
+        val newAccumulated = listenSubSeconds + seconds
+        val addedFullSeconds = newAccumulated.toInt()
+        
+        if (addedFullSeconds > 0) {
+            todayListenSeconds += addedFullSeconds
+            listenSubSeconds = newAccumulated - addedFullSeconds
+            prefs.edit().putInt("today_listen_seconds", todayListenSeconds).putFloat("listen_sub_seconds", listenSubSeconds).apply()
+        } else {
+            listenSubSeconds = newAccumulated
+        }
         
         // Listen & Earn: 15 minutes = 900 seconds
         if (oldSeconds < 900 && todayListenSeconds >= 900) {
             recordTransaction(TransactionType.REFERRAL_BONUS, 10, "Listen & Earn (15m)")
+            rewardMessage = "You've earned 10 coins for listening!"
         }
-        
-        prefs.edit().putInt("today_listen_seconds", todayListenSeconds).apply()
     }
 
     fun incrementStat(seriesId: String, type: String) {
@@ -594,12 +610,19 @@ class KahaniStore(context: Context) {
         val f = fraction.coerceIn(0f, 1f)
         progress[seriesId] = ReadingProgress(seriesId, chapterId, format, f, System.currentTimeMillis())
         prefs.writeSet(KEY_PROGRESS, progress.values.map { "${it.seriesId}|${it.chapterId}|${it.format}|${it.fraction}|${it.lastAccessedAt}" })
-        
-        // Instant sync: update series uploader stats or trigger local notification if needed
-        // Here we just ensure the local state is updated for LibraryScreen
+        lastProgressUpdate = System.currentTimeMillis()
     }
-    fun inProgressSeries(): List<Series> = progress.values.sortedByDescending { it.lastAccessedAt }.mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }.filter { !familySafeMode || !it.isMature }
-    fun completedSeries(): List<Series> = progress.values.filter { prog -> val s = catalog.firstOrNull { it.id == prog.seriesId }; prog.fraction >= 0.99f && s?.status == SeriesStatus.COMPLETED }.mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }
+    fun inProgressSeries(): List<Series> = progress.values
+        .sortedByDescending { it.lastAccessedAt }
+        .mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }
+        .filter { it.publishStatus == "PUBLISHED" && (!familySafeMode || !it.isMature) }
+        .filter { (progress[it.id]?.fraction ?: 0f) < 0.99f }
+
+    fun completedSeries(): List<Series> = progress.values
+        .sortedByDescending { it.lastAccessedAt }
+        .filter { it.fraction >= 0.99f }
+        .mapNotNull { prog -> catalog.firstOrNull { it.id == prog.seriesId } }
+        .filter { it.publishStatus == "PUBLISHED" && (!familySafeMode || !it.isMature) }
 
     // ---- Downloads -----------------------------------------------------------------
     fun isDownloaded(chapterId: String): Boolean = downloads.any { it.chapterId == chapterId }
